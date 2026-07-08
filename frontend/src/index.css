@@ -1,0 +1,40 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-prastav-50: #f0fff4;
+  --color-prastav-100: #dcfce7;
+  --color-prastav-200: #bbf7d0;
+  --color-prastav-300: #86efac;
+  --color-prastav-400: #4ade80;
+  --color-prastav-500: #22c55e;
+  --color-prastav-600: #16a34a;
+  --color-prastav-700: #15803d;
+  --color-prastav-800: #166534;
+  --color-prastav-900: #14532d;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.leaflet-container {
+  z-index: 0;
+  font-family: var(--font-sans);
+}
+
+.custom-marker {
+  background: transparent !important;
+  border: none !important;
+}
