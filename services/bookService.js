@@ -48,6 +48,7 @@ const parsePagination = (query) => {
 const baseAvailabilityFilter = () => ({
   isAvailable: { $ne: false },
   isReported: { $ne: true },
+  isDeleted: { $ne: true },
 });
 
 /**
@@ -426,7 +427,7 @@ const createBook = async (userId, body, file) => {
 };
 
 const getMyListings = async (userId) => {
-  const books = await Book.find({ seller: userId }).sort({ createdAt: -1 });
+  const books = await Book.find({ seller: userId, isDeleted: { $ne: true } }).sort({ createdAt: -1 });
   return books.map((b) => formatBook(b));
 };
 

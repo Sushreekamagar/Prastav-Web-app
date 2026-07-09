@@ -28,6 +28,8 @@ const formatSafeUser = (user) => ({
   esewaQR: user.esewaQR,
   khaltiQR: user.khaltiQR,
   isVerified: user.isVerified,
+  status: user.status,
+  isReported: user.isReported,
   createdAt: user.createdAt,
   updatedAt: user.updatedAt,
 });

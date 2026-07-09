@@ -34,8 +34,19 @@ const userSchema = new mongoose.Schema(
 
     role: {
       type: String,
-      enum: ['buyer', 'seller'],
+      enum: ['buyer', 'seller', 'admin'],
       default: 'buyer',
+    },
+
+    status: {
+      type: String,
+      enum: ['active', 'suspended'],
+      default: 'active',
+    },
+
+    isReported: {
+      type: Boolean,
+      default: false,
     },
 
     profileImage: {

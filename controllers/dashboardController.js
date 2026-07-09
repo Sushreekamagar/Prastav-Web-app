@@ -25,6 +25,7 @@ const getBuyerDashboard = async (req, res) => {
       const nearbyFilter = {
         isAvailable: { $ne: false },
         isReported: { $ne: true },
+        isDeleted: { $ne: true },
         location: {
           $near: {
             $geometry: { type: 'Point', coordinates: [coords[0], coords[1]] },
@@ -105,7 +106,7 @@ const getSellerDashboard = async (req, res) => {
     const userId = req.user._id;
 
     // 1. Listed Books
-    const listedBooks = await Book.countDocuments({ seller: userId });
+    const listedBooks = await Book.countDocuments({ seller: userId, isDeleted: { $ne: true } });
 
     // 2. Pending Requests
     const pendingRequests = await Transaction.countDocuments({

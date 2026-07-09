@@ -303,6 +303,8 @@ const fetchSimilarCandidates = async (sourceBook, bookIdExclude) => {
   const filter = {
     isAvailable: { $ne: false },
     isReported: { $ne: true },
+    isDeleted: { $ne: true },
+    rating: { $gte: 4 },
     _id: { $ne: bookIdExclude },
     $or: [
       ...(sourceBook.genre ? [{ genre: sourceBook.genre }] : []),
