@@ -88,6 +88,7 @@ const bookSchema = new mongoose.Schema(
 
     isAvailable: { type: Boolean, default: true },
     isReported: { type: Boolean, default: false },
+    isDeleted: { type: Boolean, default: false },
   },
   {
     timestamps: true,

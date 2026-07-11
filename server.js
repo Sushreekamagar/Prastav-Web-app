@@ -17,6 +17,7 @@ const chatRoutes        = require('./routes/chatRoutes');
 const recommendationRoutes = require('./routes/recommendationRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const dashboardRoutes    = require('./routes/dashboardRoutes');
+const adminRoutes        = require('./routes/adminRoutes');
  
 // ── Connect Database ──────────────────────────────────────────────────────────
 connectDB();
@@ -69,6 +70,7 @@ app.use('/api/chat',         chatRoutes);
 app.use('/api/recommendations', recommendationRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/dashboard',     dashboardRoutes);
+app.use('/api/admin',         adminRoutes);
 
 // Root endpoint - serves a friendly API landing page
 app.get('/', (req, res) => {

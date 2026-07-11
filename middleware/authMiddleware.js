@@ -42,6 +42,12 @@ const protect = async (req, res, next) => {
       );
     }
 
+    if (user.status === 'suspended') {
+      return next(
+        new AppError('Your account has been suspended. Please contact support.', 403)
+      );
+    }
+
     req.user = user;
     next();
   } catch (error) {
