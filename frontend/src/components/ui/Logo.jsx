@@ -1,136 +1,109 @@
 export default function Logo({ size = 'md', showTagline = false, className = '' }) {
   const sizes = {
-    sm: { imgSize: 40, text: 'text-lg', tagline: 'text-xs' },
-    md: { imgSize: 64, text: 'text-2xl', tagline: 'text-sm' },
-    lg: { imgSize: 96, text: 'text-3xl', tagline: 'text-base' },
-    xl: { imgSize: 128, text: 'text-4xl', tagline: 'text-lg' },
+    sm: { imgSize: 44, text: 'text-base', tagline: 'text-xs' },
+    md: { imgSize: 64, text: 'text-xl', tagline: 'text-xs' },
+    lg: { imgSize: 96, text: 'text-2xl', tagline: 'text-sm' },
+    xl: { imgSize: 130, text: 'text-4xl', tagline: 'text-base' },
   }
 
   const s = sizes[size]
-  const greenColor = '#1a6b3a'
+  const G = '#1a6b3a' // brand dark green
 
   return (
     <div className={`flex flex-col items-center ${className}`}>
-      {/* Prastav Logo: Open book with circular exchange arrows */}
+      {/*
+        SVG reproduces the uploaded Prastav logo:
+        – Open book (two pages, white interior, green fill/outline)
+        – Circular exchange arrows below the book
+      */}
       <svg
         width={s.imgSize}
         height={s.imgSize}
-        viewBox="0 0 120 120"
+        viewBox="0 0 200 200"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
       >
-        {/* Book left page */}
+        {/* ── LEFT PAGE ── */}
         <path
-          d="M60 22 C60 22 38 18 22 26 L22 72 C38 64 60 68 60 68 Z"
-          fill={greenColor}
-          opacity="0.95"
+          d="M100 40 C85 35 60 32 35 42 L35 118 C60 108 85 112 100 118 Z"
+          fill={G}
         />
-        {/* Book right page */}
+        {/* left page white interior */}
         <path
-          d="M60 22 C60 22 82 18 98 26 L98 72 C82 64 60 68 60 68 Z"
-          fill={greenColor}
-          opacity="0.85"
-        />
-        {/* Book spine highlight */}
-        <path
-          d="M60 22 L60 68"
-          stroke="white"
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
-        {/* Book top left curve */}
-        <path
-          d="M22 26 C30 18 46 14 60 22"
-          stroke="white"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          fill="none"
-        />
-        {/* Book top right curve */}
-        <path
-          d="M98 26 C90 18 74 14 60 22"
-          stroke="white"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          fill="none"
-        />
-        {/* Left page vertical border */}
-        <path
-          d="M22 26 L22 72"
-          stroke="white"
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
-        {/* Right page vertical border */}
-        <path
-          d="M98 26 L98 72"
-          stroke="white"
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
-        {/* Page bottom area fills (v-shape at bottom) */}
-        <path
-          d="M22 72 C38 64 60 68 60 68 L60 75 C46 73 34 77 22 72 Z"
-          fill={greenColor}
-        />
-        <path
-          d="M98 72 C82 64 60 68 60 68 L60 75 C74 73 86 77 98 72 Z"
-          fill={greenColor}
+          d="M100 50 C86 45 63 43 40 52 L40 112 C63 103 86 107 100 112 Z"
+          fill="white"
+          opacity="0.25"
         />
 
-        {/* Circular exchange arrows */}
-        {/* Left arrow - going counterclockwise at bottom */}
+        {/* ── RIGHT PAGE ── */}
         <path
-          d="M30 88 Q20 82 22 72"
-          stroke={greenColor}
-          strokeWidth="4"
+          d="M100 40 C115 35 140 32 165 42 L165 118 C140 108 115 112 100 118 Z"
+          fill={G}
+        />
+        {/* right page white interior */}
+        <path
+          d="M100 50 C114 45 137 43 160 52 L160 112 C137 103 114 107 100 112 Z"
+          fill="white"
+          opacity="0.15"
+        />
+
+        {/* ── SPINE ── */}
+        <line x1="100" y1="40" x2="100" y2="118" stroke="white" strokeWidth="3" strokeLinecap="round" />
+
+        {/* ── BOOK OUTLINE (top curves + sides) ── */}
+        {/* top-left curve */}
+        <path d="M35 42 C55 28 80 26 100 40" stroke="white" strokeWidth="3.5" strokeLinecap="round" fill="none" />
+        {/* top-right curve */}
+        <path d="M165 42 C145 28 120 26 100 40" stroke="white" strokeWidth="3.5" strokeLinecap="round" fill="none" />
+        {/* left outer edge */}
+        <path d="M35 42 L35 118" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
+        {/* right outer edge */}
+        <path d="M165 42 L165 118" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
+
+        {/* ── CIRCULAR EXCHANGE ARROWS ── */}
+        {/*
+          Two arcs that together form a wide ellipse around the book base,
+          each capped with an arrowhead — mimicking the recycle/swap symbol.
+        */}
+
+        {/* Top arc (left-to-right, above centre) */}
+        <path
+          d="M55 128 Q100 108 145 128"
+          stroke={G}
+          strokeWidth="5"
           strokeLinecap="round"
           fill="none"
         />
-        {/* Left arrowhead */}
+        {/* Arrowhead on right end of top arc → pointing right-down */}
         <polygon
-          points="30,84 26,92 34,92"
-          fill={greenColor}
-          transform="rotate(-30, 30, 88)"
+          points="145,118 155,130 140,138"
+          fill={G}
         />
 
-        {/* Right arrow - going clockwise at bottom */}
+        {/* Bottom arc (right-to-left, below centre) */}
         <path
-          d="M90 88 Q100 82 98 72"
-          stroke={greenColor}
-          strokeWidth="4"
+          d="M145 140 Q100 162 55 140"
+          stroke={G}
+          strokeWidth="5"
           strokeLinecap="round"
           fill="none"
         />
-        {/* Right arrowhead */}
+        {/* Arrowhead on left end of bottom arc → pointing left-up */}
         <polygon
-          points="90,84 86,92 94,92"
-          fill={greenColor}
-          transform="rotate(30, 90, 88)"
-        />
-
-        {/* Bottom arc connecting both arrows */}
-        <path
-          d="M30 92 Q60 104 90 92"
-          stroke={greenColor}
-          strokeWidth="4"
-          strokeLinecap="round"
-          fill="none"
-        />
-
-        {/* Top arc at front - circular arrow going over the book base */}
-        <path
-          d="M28 76 Q60 86 92 76"
-          stroke={greenColor}
-          strokeWidth="3.5"
-          strokeLinecap="round"
-          fill="none"
-          opacity="0.7"
+          points="55,150 45,138 60,130"
+          fill={G}
         />
       </svg>
-      <span className={`mt-2 font-bold ${s.text}`} style={{ color: greenColor }}>Prastav</span>
+
+      <span
+        className={`mt-2 font-extrabold tracking-tight ${s.text}`}
+        style={{ color: G, fontFamily: 'inherit' }}
+      >
+        Prastav
+      </span>
+
       {showTagline && (
-        <span className={`mt-1 text-gray-500 ${s.tagline}`}>
+        <span className={`mt-0.5 text-center text-gray-500 ${s.tagline}`}>
           Student Book Exchange &amp; Recommendations
         </span>
       )}

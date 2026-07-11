@@ -30,11 +30,11 @@ export default function NearbySellersPage() {
         setLoading(false)
       }
     }
-    if (location) load()
+    load()
   }, [location])
 
-  if (geoLoading || loading) {
-    return <LoadingScreen message="Finding nearby sellers..." />
+  if (loading) {
+    return <LoadingScreen message="Finding nearby books..." />
   }
 
   return (

@@ -1,7 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
 
+// Default to Kathmandu centre — shown immediately while GPS resolves
+const DEFAULT_LOCATION = { lat: 27.7172, lng: 85.324 }
+
 export function useGeolocation() {
-  const [location, setLocation] = useState(null)
+  // Start with default so the page renders instantly
+  const [location, setLocation] = useState(DEFAULT_LOCATION)
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
 
@@ -24,10 +28,15 @@ export function useGeolocation() {
       },
       (err) => {
         setError(err.message || 'Unable to retrieve your location.')
-        setLocation({ lat: 27.7172, lng: 85.324 })
+        // Keep showing default location on error
+        setLocation(DEFAULT_LOCATION)
         setLoading(false)
       },
-      { enableHighAccuracy: true, timeout: 10000 },
+      {
+        enableHighAccuracy: false,  // faster — no GPS chip needed
+        timeout: 5000,              // 5 s max wait
+        maximumAge: 60000,          // reuse a cached fix up to 1 min old
+      },
     )
   }, [])
 
