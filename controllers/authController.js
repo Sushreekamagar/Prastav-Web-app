@@ -48,7 +48,6 @@ const forgotPassword = asyncHandler(async (req, res, next) => {
   res.status(200).json({
     success: true,
     message: result.message,
-    ...(result.userId && { userId: result.userId }),
   });
 });
 

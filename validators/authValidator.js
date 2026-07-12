@@ -116,18 +116,13 @@ const validateResetPassword = (req, res, next) => {
   const body = getBody(req, res, next);
   if (!body) return;
 
-  const { userId, otp, newPassword } = body;
+  const { email, otp, newPassword } = body;
 
-  if (!userId || !otp) {
-    return next(new AppError('userId and otp are required.', 400));
+  if (!email || !otp) {
+    return next(new AppError('email and otp are required.', 400));
   }
-  if (!isValidObjectId(userId)) {
-    return next(
-      new AppError(
-        'userId must be a valid MongoDB ID. Copy the userId from the forgot-password response.',
-        400
-      )
-    );
+  if (!isValidEmail(email)) {
+    return next(new AppError('A valid email address is required.', 400));
   }
   if (!newPassword || newPassword.length < 6) {
     return next(new AppError('New password must be at least 6 characters.', 400));
