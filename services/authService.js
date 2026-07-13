@@ -173,26 +173,15 @@ const login = async (body) => {
   };
 };
 
-/**
- * forgotPassword — Generate OTP and email it for password reset.
- * Always returns a generic success message to avoid email enumeration.
- */
 const forgotPassword = async (body) => {
   const { email } = body || {};
   const normalizedEmail = email.toLowerCase().trim();
   const user = await User.findOne({ email: normalizedEmail }).select('+otp +otpExpiry');
 
-  if (!user) {
-    return {
-      message: 'If an account with that email exists, an OTP has been sent.',
-    };
-  }
+  const successMessage = 'If an account with that email exists and is verified, an OTP has been sent for password reset.';
 
-  if (!user.isVerified) {
-    throw new AppError(
-      'This account is not verified. Please signup and verify first.',
-      400
-    );
+  if (!user || !user.isVerified) {
+    return { message: successMessage };
   }
 
   const otp = generateOTP();
@@ -204,18 +193,16 @@ const forgotPassword = async (body) => {
 
   await sendPasswordResetEmail(normalizedEmail, otp, user.name);
 
-  return {
-    message: 'OTP sent to your email for password reset.',
-    userId: user._id,
-  };
+  return { message: successMessage };
 };
 
 /**
  * resetPassword — Verify OTP and save a new hashed password.
  */
 const resetPassword = async (body) => {
-  const { userId, otp, newPassword } = body || {};
-  const user = await User.findById(userId).select('+otp +otpExpiry +password');
+  const { email, otp, newPassword } = body || {};
+  const normalizedEmail = email.toLowerCase().trim();
+  const user = await User.findOne({ email: normalizedEmail }).select('+otp +otpExpiry +password');
 
   if (!user) {
     throw new AppError('User not found.', 404);
