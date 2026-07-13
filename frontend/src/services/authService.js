@@ -112,6 +112,15 @@ export async function changePassword(currentPassword, newPassword) {
   return data
 }
 
+export async function switchRole(newRole) {
+  if (USE_MOCK) {
+    await delay(800)
+    return { ...MOCK_USER, role: newRole }
+  }
+  const { data } = await api.put('/profile/role', { role: newRole })
+  return data
+}
+
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }

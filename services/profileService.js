@@ -117,6 +117,37 @@ const updateEsewaQR = async (userId, filename) =>
 const updateKhaltiQR = async (userId, filename) =>
   updateImageField(userId, 'khaltiQR', 'khalti-qr', filename);
 
+/**
+ * switchRole — Allows a user to switch their role between buyer, seller, or both.
+ * Admin role cannot be changed via this endpoint.
+ */
+const switchRole = async (userId, newRole) => {
+  const ALLOWED_ROLES = ['buyer', 'seller', 'both'];
+
+  if (!ALLOWED_ROLES.includes(newRole)) {
+    throw new AppError(`Invalid role. Allowed: ${ALLOWED_ROLES.join(', ')}.`, 400);
+  }
+
+  const user = await User.findById(userId);
+
+  if (!user) {
+    throw new AppError('User not found.', 404);
+  }
+
+  if (user.role === 'admin') {
+    throw new AppError('Admin role cannot be changed.', 403);
+  }
+
+  if (user.role === newRole) {
+    throw new AppError(`You are already a ${newRole}.`, 400);
+  }
+
+  user.role = newRole;
+  await user.save({ validateBeforeSave: false });
+
+  return formatSafeUser(user);
+};
+
 module.exports = {
   getProfile,
   updateProfile,
@@ -126,4 +157,5 @@ module.exports = {
   updateProfileImage,
   updateEsewaQR,
   updateKhaltiQR,
+  switchRole,
 };

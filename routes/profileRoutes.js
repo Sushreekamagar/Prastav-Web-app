@@ -10,6 +10,7 @@ const {
   updateEsewaQR,
   updateKhaltiQR,
   updateProfileImage,
+  switchRole,
 } = require('../controllers/profileController');
 
 const { protect, restrictTo } = require('../middleware/authMiddleware');
@@ -34,6 +35,7 @@ const {
 
 router.get('/profile', protect, getProfile);
 router.put('/profile', protect, validateUpdateProfile, updateProfile);
+router.put('/profile/role', protect, switchRole);
 router.put('/profile/location', protect, validateUpdateLocation, updateLocation);
 router.put('/profile/esewa', protect, validatePaymentNumber('esewaNumber'), updateEsewa);
 router.put('/profile/khalti', protect, validatePaymentNumber('khaltiNumber'), updateKhalti);

@@ -96,6 +96,23 @@ const updateProfileImage = asyncHandler(async (req, res, next) => {
   });
 });
 
+// PUT /api/profile/role
+const switchRole = asyncHandler(async (req, res, next) => {
+  const { role } = req.body;
+
+  if (!role) {
+    return res.status(400).json({ success: false, message: 'Role is required.' });
+  }
+
+  const user = await profileService.switchRole(req.user._id, role);
+
+  res.status(200).json({
+    success: true,
+    message: `Role switched to ${role} successfully.`,
+    user,
+  });
+});
+
 module.exports = {
   getProfile,
   updateProfile,
@@ -105,4 +122,5 @@ module.exports = {
   updateEsewaQR,
   updateKhaltiQR,
   updateProfileImage,
+  switchRole,
 };
