@@ -32,9 +32,16 @@ const validateSignup = (req, res, next) => {
   const body = getBody(req, res, next);
   if (!body) return;
 
+  if (typeof body.email === 'string') {
+    body.email = body.email.trim().toLowerCase();
+  }
+  if (typeof body.name === 'string') {
+    body.name = body.name.trim();
+  }
+
   const { name, email, password, role } = body;
 
-  if (!name || !name.trim()) {
+  if (!name) {
     return next(new AppError('Name is required.', 400));
   }
   if (!email || !isValidEmail(email)) {
