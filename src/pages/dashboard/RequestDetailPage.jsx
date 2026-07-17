@@ -7,6 +7,12 @@ import {
   HiOutlineUpload,
   HiOutlineCheck,
   HiOutlineX,
+  HiOutlineTruck,
+  HiOutlineUser,
+  HiOutlineCash,
+  HiOutlineCreditCard,
+  HiOutlineExclamation,
+  HiOutlineChat,
 } from 'react-icons/hi'
 import { DashboardPage } from '../../layouts/DashboardLayout'
 import Badge from '../../components/ui/Badge'
@@ -37,7 +43,7 @@ import {
 import { REQUEST_STATUS, PAYMENT_METHODS } from '../../utils/bookConstants'
 import { getGradeLabel } from '../../utils/navigation'
 
-function MockQR({ wallet }) {
+function PlaceholderQR({ wallet }) {
   const isEsewa = wallet === 'esewa'
   const brandColor = isEsewa ? '#60bb46' : '#5c2d91'
   return (
@@ -135,11 +141,13 @@ export default function RequestDetailPage({ mode = 'request' }) {
   const isBuyerView = !isSeller
   const isSellerView = isSeller
 
+  const dispatch = () => window.dispatchEvent(new Event('refresh-data'))
+
   const handleAccept = async () => {
     try {
       await updateRequestStatus(id, 'accepted')
       toast.success('Request accepted!')
-      load()
+      dispatch(); load()
     } catch (err) {
       toast.error(err.message || 'Failed to accept')
     }
@@ -149,7 +157,7 @@ export default function RequestDetailPage({ mode = 'request' }) {
     try {
       await updateRequestStatus(id, 'rejected')
       toast.success('Request rejected')
-      load()
+      dispatch(); load()
     } catch (err) {
       toast.error(err.message || 'Failed to reject')
     }
@@ -161,7 +169,7 @@ export default function RequestDetailPage({ mode = 'request' }) {
       await cancelRequest(id)
       toast.success('Request cancelled')
       setCancelOpen(false)
-      load()
+      dispatch(); load()
     } catch (err) {
       toast.error(err.message || 'Failed to cancel')
     } finally {
@@ -177,12 +185,12 @@ export default function RequestDetailPage({ mode = 'request' }) {
     setSubmitting(true)
     try {
       const formData = new FormData()
-      formData.append('paymentMethod', paymentMethod)
+      formData.append('paymentMethod', request.paymentMethod || paymentMethod)
       formData.append('screenshot', paymentFile)
       await uploadPaymentProof(id, formData)
       toast.success('Payment proof uploaded!')
       setPaymentOpen(false)
-      load()
+      dispatch(); load()
     } catch (err) {
       toast.error(err.message || 'Upload failed')
     } finally {
@@ -194,7 +202,7 @@ export default function RequestDetailPage({ mode = 'request' }) {
     try {
       await verifyPayment(id, verified)
       toast.success(verified ? 'Payment verified!' : 'Payment rejected')
-      load()
+      dispatch(); load()
     } catch (err) {
       toast.error(err.message || 'Verification failed')
     }
@@ -204,7 +212,7 @@ export default function RequestDetailPage({ mode = 'request' }) {
     try {
       await completeTransaction(id)
       toast.success('Transaction completed!')
-      load()
+      dispatch(); load()
     } catch (err) {
       toast.error(err.message || 'Failed to complete')
     }
@@ -216,12 +224,28 @@ export default function RequestDetailPage({ mode = 'request' }) {
       await submitRating(id, rating, review)
       toast.success('Rating submitted!')
       setRatingOpen(false)
+      dispatch(); load()
     } catch (err) {
       toast.error(err.message || 'Failed to submit rating')
     } finally {
       setSubmitting(false)
     }
   }
+
+  // Delivery path helpers
+  const isDelivery = ['esewa', 'khalti'].includes(request.paymentMethod)
+  const isCOD      = request.paymentMethod === 'cod'
+  const isFree     = request.paymentMethod === 'free' || !request.paymentMethod
+  const chatEnabled = ['accepted','payment_pending','payment_uploaded','payment_completed','completed'].includes(request.status)
+
+  // QR missing check
+  const sellerMissingEsewa  = !request.seller?.esewaQr  && !request.seller?.esewaQR
+  const sellerMissingKhalti = !request.seller?.khaltiQr && !request.seller?.khaltiQR
+  const buyerPayMethod = request.paymentMethod // esewa | khalti | cod | free
+  const buyerQrMissing = (
+    (buyerPayMethod === 'esewa'  && sellerMissingEsewa) ||
+    (buyerPayMethod === 'khalti' && sellerMissingKhalti)
+  )
 
   const breadcrumbs =
     mode === 'transaction'
@@ -239,20 +263,37 @@ export default function RequestDetailPage({ mode = 'request' }) {
       breadcrumbs={breadcrumbs}
     >
       <PageTransition>
-        <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="mb-4 flex flex-wrap items-center gap-3">
           <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
+          {isDelivery && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-prastav-100 px-3 py-1 text-xs font-medium text-prastav-800">
+              <HiOutlineTruck className="h-3.5 w-3.5" /> Home Delivery
+            </span>
+          )}
+          {isCOD && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-800">
+              <HiOutlineUser className="h-3.5 w-3.5" /> Self Pickup · COD
+            </span>
+          )}
+          {isFree && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-800">
+              🎁 Free / No Payment
+            </span>
+          )}
           <Link
             to={`/dashboard/books/${request.book?._id}`}
             className="text-sm font-medium text-prastav-700 hover:underline"
           >
             View Book
           </Link>
-          <Link
-            to={`/dashboard/chats?request=${id}`}
-            className="text-sm font-medium text-prastav-700 hover:underline"
-          >
-            Open Chat
-          </Link>
+          {chatEnabled && (
+            <Link
+              to={`/dashboard/chats?request=${id}`}
+              className="inline-flex items-center gap-1 rounded-full bg-prastav-600 px-3 py-1 text-xs font-semibold text-white hover:bg-prastav-700 transition"
+            >
+              <HiOutlineChat className="h-3.5 w-3.5" /> Open Chat
+            </Link>
+          )}
         </div>
 
         <div className="grid gap-6 lg:grid-cols-3">
@@ -302,16 +343,16 @@ export default function RequestDetailPage({ mode = 'request' }) {
               </div>
             </div>
 
-            {/* ── QR Payment Section: shown to buyer once request is accepted ── */}
-            {isBuyerView && request.status === 'accepted' && (
+            {/* ── QR Payment Section: shown to buyer when status = payment_pending ── */}
+            {isBuyerView && isDelivery && request.status === 'payment_pending' && (
               <div className="rounded-2xl bg-white p-6 shadow-md border-2 border-prastav-100">
                 <div className="flex items-center gap-2 mb-4">
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-prastav-100">
-                    <span className="text-lg">💳</span>
+                    <HiOutlineCreditCard className="h-5 w-5 text-prastav-700" />
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900">Pay the Seller</h3>
-                    <p className="text-xs text-gray-500">Request accepted! Scan QR to pay, then upload screenshot.</p>
+                    <p className="text-xs text-gray-500">Request accepted! Scan QR to pay, then upload your screenshot.</p>
                   </div>
                 </div>
 
@@ -323,48 +364,105 @@ export default function RequestDetailPage({ mode = 'request' }) {
                   <div className="text-right">
                     <p className="text-xs text-gray-500">To</p>
                     <p className="text-sm font-semibold text-gray-800">{request.seller?.name || request.book?.seller?.name}</p>
+                    <p className="text-xs text-gray-400">{buyerPayMethod?.toUpperCase?.() ?? 'QR'}</p>
                   </div>
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2">
-                  {/* eSewa QR */}
-                  <div className="rounded-xl border border-gray-100 p-3 bg-gray-50">
-                    <p className="text-xs font-bold text-[#60bb46] mb-2 flex items-center gap-1">💚 eSewa</p>
-                    {request.seller?.esewaQr ? (
-                      <img
-                        src={request.seller.esewaQr}
-                        alt="eSewa QR"
-                        className="w-full max-w-[160px] mx-auto rounded-lg object-contain"
-                      />
-                    ) : (
-                      <MockQR wallet="esewa" />
+                {buyerQrMissing ? (
+                  <div className="rounded-xl bg-amber-50 border border-amber-200 p-4 flex items-start gap-3">
+                    <HiOutlineExclamation className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-500" />
+                    <div>
+                      <p className="font-semibold text-amber-800 text-sm">Seller QR Not Yet Uploaded</p>
+                      <p className="mt-1 text-xs text-amber-700">
+                        The seller hasn&apos;t uploaded their {buyerPayMethod === 'esewa' ? 'eSewa' : 'Khalti'} QR code yet.
+                        Please contact them via <Link to={`/dashboard/chats?request=${id}`} className="underline font-semibold">chat</Link> or wait for them to add it in their Profile Settings.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex justify-center">
+                    {buyerPayMethod === 'esewa' && (
+                      <div className="rounded-xl border border-gray-100 p-4 bg-gray-50 text-center w-56">
+                        <p className="text-xs font-bold text-[#60bb46] mb-3">💚 eSewa</p>
+                        {request.seller?.esewaQr ? (
+                          <img src={request.seller.esewaQr} alt="eSewa QR" className="w-40 h-40 mx-auto rounded-lg object-contain" />
+                        ) : (
+                          <PlaceholderQR wallet="esewa" />
+                        )}
+                        {request.seller?.esewaNumber && (
+                          <p className="mt-2 text-xs font-semibold text-gray-600">{request.seller.esewaNumber}</p>
+                        )}
+                      </div>
                     )}
-                    {request.seller?.esewaNumber && (
-                      <p className="mt-2 text-center text-xs font-semibold text-gray-600">{request.seller.esewaNumber}</p>
+                    {buyerPayMethod === 'khalti' && (
+                      <div className="rounded-xl border border-gray-100 p-4 bg-gray-50 text-center w-56">
+                        <p className="text-xs font-bold text-[#5c2d91] mb-3">💜 Khalti</p>
+                        {request.seller?.khaltiQr ? (
+                          <img src={request.seller.khaltiQr} alt="Khalti QR" className="w-40 h-40 mx-auto rounded-lg object-contain" />
+                        ) : (
+                          <PlaceholderQR wallet="khalti" />
+                        )}
+                        {request.seller?.khaltiNumber && (
+                          <p className="mt-2 text-xs font-semibold text-gray-600">{request.seller.khaltiNumber}</p>
+                        )}
+                      </div>
                     )}
                   </div>
-
-                  {/* Khalti QR */}
-                  <div className="rounded-xl border border-gray-100 p-3 bg-gray-50">
-                    <p className="text-xs font-bold text-[#5c2d91] mb-2 flex items-center gap-1">💜 Khalti</p>
-                    {request.seller?.khaltiQr ? (
-                      <img
-                        src={request.seller.khaltiQr}
-                        alt="Khalti QR"
-                        className="w-full max-w-[160px] mx-auto rounded-lg object-contain"
-                      />
-                    ) : (
-                      <MockQR wallet="khalti" />
-                    )}
-                    {request.seller?.khaltiNumber && (
-                      <p className="mt-2 text-center text-xs font-semibold text-gray-600">{request.seller.khaltiNumber}</p>
-                    )}
-                  </div>
-                </div>
+                )}
 
                 <p className="mt-4 text-center text-xs text-gray-400">
-                  After paying, tap <span className="font-semibold text-prastav-700">Upload Payment Proof</span> below to send your screenshot.
+                  After paying, tap <span className="font-semibold text-prastav-700">Upload Payment Proof</span> below.
                 </p>
+              </div>
+            )}
+
+            {/* ── COD Section: Self-Pickup meetup info ── */}
+            {isCOD && request.status === 'accepted' && (
+              <div className="rounded-2xl bg-blue-50 p-6 shadow-md border border-blue-200">
+                <div className="flex items-center gap-2 mb-3">
+                  <HiOutlineUser className="h-5 w-5 text-blue-600" />
+                  <h3 className="font-semibold text-blue-800">Self Pickup — Meetup Details</h3>
+                </div>
+                <p className="text-sm text-blue-700">
+                  Agree on a meetup location with the seller via chat. Payment is Cash on Delivery at the meetup.
+                </p>
+                {request.distanceKm != null && (
+                  <p className="mt-2 text-sm font-medium text-blue-800">
+                    📍 Seller is approximately <strong>{request.distanceKm} km</strong> away from you.
+                  </p>
+                )}
+                {request.meetingLandmark && (
+                  <p className="mt-2 text-sm text-blue-700">📌 Suggested landmark: <em>{request.meetingLandmark}</em></p>
+                )}
+                {chatEnabled && (
+                  <Link
+                    to={`/dashboard/chats?request=${id}`}
+                    className="mt-3 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition"
+                  >
+                    <HiOutlineChat className="h-4 w-4" /> Coordinate via Chat
+                  </Link>
+                )}
+              </div>
+            )}
+
+            {/* ── Seller QR Upload Prompt ── */}
+            {isSellerView && isDelivery && ['accepted','payment_pending'].includes(request.status) && (
+              buyerPayMethod === 'esewa' && sellerMissingEsewa ||
+              buyerPayMethod === 'khalti' && sellerMissingKhalti
+            ) && (
+              <div className="rounded-2xl bg-amber-50 border border-amber-200 p-5">
+                <div className="flex items-start gap-3">
+                  <HiOutlineExclamation className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600" />
+                  <div>
+                    <p className="font-semibold text-amber-800">
+                      Action Required: Upload Your {buyerPayMethod === 'esewa' ? 'eSewa' : 'Khalti'} QR
+                    </p>
+                    <p className="mt-1 text-xs text-amber-700">
+                      The buyer chose {buyerPayMethod === 'esewa' ? 'eSewa' : 'Khalti'} but you haven&apos;t uploaded your QR code yet.
+                      Please add it in <Link to="/dashboard/settings" className="underline font-semibold">Settings → Payment Info</Link> so the buyer can pay.
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -418,6 +516,7 @@ export default function RequestDetailPage({ mode = 'request' }) {
             <div className="rounded-2xl bg-white p-6 shadow-md space-y-3">
               <h3 className="font-semibold text-gray-900">Actions</h3>
 
+              {/* Seller: accept/reject pending */}
               {isSellerView && request.status === 'pending' && (
                 <>
                   <Button className="w-full" onClick={handleAccept}>
@@ -429,18 +528,35 @@ export default function RequestDetailPage({ mode = 'request' }) {
                 </>
               )}
 
+              {/* Buyer: cancel while pending */}
               {isBuyerView && request.status === 'pending' && (
                 <Button variant="outline" className="w-full !text-red-600" onClick={() => setCancelOpen(true)}>
                   Cancel Request
                 </Button>
               )}
 
-              {isBuyerView && request.status === 'accepted' && (
+              {/* Buyer: cancel while payment pending (Delivery only, before paying) */}
+              {isBuyerView && isDelivery && request.status === 'payment_pending' && (
+                <Button variant="outline" className="w-full !text-red-600" onClick={() => setCancelOpen(true)}>
+                  Cancel Request
+                </Button>
+              )}
+
+              {/* Buyer: cancel COD or Free before meetup/exchange (status = accepted) */}
+              {isBuyerView && (isCOD || isFree) && request.status === 'accepted' && (
+                <Button variant="outline" className="w-full !text-red-600" onClick={() => setCancelOpen(true)}>
+                  Cancel Request
+                </Button>
+              )}
+
+              {/* Buyer: upload payment proof (Delivery, payment_pending) */}
+              {isBuyerView && isDelivery && request.status === 'payment_pending' && (
                 <Button className="w-full" onClick={() => setPaymentOpen(true)}>
                   <HiOutlineUpload className="h-4 w-4" /> Upload Payment Proof
                 </Button>
               )}
 
+              {/* Seller: verify/reject uploaded payment (Delivery) */}
               {isSellerView && (request.status === 'payment_pending' || request.status === 'payment_uploaded') && (
                 <>
                   <Button className="w-full" onClick={() => handleVerify(true)}>Verify Payment</Button>
@@ -448,13 +564,22 @@ export default function RequestDetailPage({ mode = 'request' }) {
                 </>
               )}
 
+              {/* Seller: complete after payment verified (Delivery) */}
               {isSellerView && request.status === 'payment_verified' && (
-                <Button className="w-full" onClick={handleComplete}>Complete Transaction</Button>
+                <Button className="w-full" onClick={handleComplete}>Mark as Delivered</Button>
               )}
 
+              {/* Seller OR Buyer: complete COD or Free transaction after meetup/exchange */}
+              {(isCOD || isFree) && request.status === 'accepted' && (
+                <Button className="w-full" onClick={handleComplete}>
+                  <HiOutlineCheck className="h-4 w-4" /> Mark as Completed (Exchange Done)
+                </Button>
+              )}
+
+              {/* Rate after completion */}
               {request.status === 'completed' && (
                 <Button variant="outline" className="w-full" onClick={() => setRatingOpen(true)}>
-                  Rate {isBuyerView ? 'Seller' : 'Buyer'}
+                  ⭐ Rate {isBuyerView ? 'Seller' : 'Buyer'}
                 </Button>
               )}
 
@@ -466,46 +591,35 @@ export default function RequestDetailPage({ mode = 'request' }) {
         </div>
       </PageTransition>
 
-      <Modal isOpen={paymentOpen} onClose={() => setPaymentOpen(false)} title="Scan & Upload Payment Proof">
+      <Modal isOpen={paymentOpen} onClose={() => setPaymentOpen(false)} title="Upload Payment Proof">
         <div className="space-y-4">
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">Select Wallet</label>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setPaymentMethod('esewa')}
-                className={`flex items-center justify-center gap-2 rounded-xl py-3 border-2 transition-all font-bold ${
-                  paymentMethod === 'esewa'
-                    ? 'border-[#60bb46] bg-[#eefbf0] text-[#60bb46]'
-                    : 'border-gray-200 text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                <span>💚</span> eSewa
-              </button>
-              <button
-                type="button"
-                onClick={() => setPaymentMethod('khalti')}
-                className={`flex items-center justify-center gap-2 rounded-xl py-3 border-2 transition-all font-bold ${
-                  paymentMethod === 'khalti'
-                    ? 'border-[#5c2d91] bg-[#f7f3fb] text-[#5c2d91]'
-                    : 'border-gray-200 text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                <span>💜</span> Khalti
-              </button>
+          <div className="rounded-xl bg-prastav-50 p-4 flex items-center justify-between">
+            <div>
+              <p className="text-xs text-gray-500">Amount</p>
+              <p className="text-xl font-bold text-prastav-800">{formatPrice(request.book?.price)}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-gray-500">To</p>
+              <p className="text-sm font-semibold">{request.seller?.name}</p>
+              <p className="text-xs text-gray-400 uppercase">{buyerPayMethod}</p>
             </div>
           </div>
 
-          <MockQR wallet={paymentMethod} />
-
-          <div className="rounded-xl bg-gray-50 p-4 border border-gray-100 text-center">
-            <p className="text-xs text-gray-500">Amount to pay</p>
-            <p className="text-xl font-bold text-gray-800 mt-0.5">{formatPrice(request.book?.price)}</p>
-            <p className="text-[10px] text-gray-400 mt-1">To: {request.seller?.name || request.book?.seller?.name}</p>
-          </div>
+          {buyerQrMissing ? (
+            <div className="rounded-xl bg-amber-50 border border-amber-200 p-4 flex items-start gap-3">
+              <HiOutlineExclamation className="mt-0.5 h-5 w-5 text-amber-500 flex-shrink-0" />
+              <p className="text-sm text-amber-700">
+                The seller hasn&apos;t uploaded their QR yet. Please coordinate via chat and upload your screenshot once paid.
+              </p>
+            </div>
+          ) : (
+            <div className="flex justify-center">
+              <PlaceholderQR wallet={buyerPayMethod} />
+            </div>
+          )}
 
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">Upload Screenshot / Payment Proof</label>
+            <label className="mb-1.5 block text-sm font-medium text-gray-700">Upload Screenshot / Proof</label>
             <div className="relative border-2 border-dashed border-gray-200 rounded-xl p-4 flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100/50 transition-colors">
               <input
                 type="file"
@@ -527,9 +641,9 @@ export default function RequestDetailPage({ mode = 'request' }) {
             )}
           </div>
 
-          <div className="mt-6 flex justify-end gap-3">
+          <div className="mt-4 flex justify-end gap-3">
             <Button variant="outline" size="sm" onClick={() => setPaymentOpen(false)}>Cancel</Button>
-            <Button size="sm" onClick={handlePaymentUpload} disabled={submitting || !paymentFile} className="!bg-[#0D723B] hover:!bg-[#0A5D30]">
+            <Button size="sm" onClick={handlePaymentUpload} disabled={submitting || !paymentFile}>
               {submitting ? 'Submitting...' : 'Submit Payment Proof'}
             </Button>
           </div>

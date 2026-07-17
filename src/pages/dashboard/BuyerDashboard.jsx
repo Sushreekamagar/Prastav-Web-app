@@ -37,25 +37,35 @@ export default function BuyerDashboard() {
   useEffect(() => {
     async function load() {
       try {
+        const safeFetch = async (promise, fallback) => {
+          try { return await promise } catch (e) { console.error('Dashboard fetch error:', e); return fallback }
+        }
+
         const [statsData, recs, reqs, convos] = await Promise.all([
-          getBuyerDashboardStats(),
-          getRecommendations(),
-          getRequests('outgoing'),
-          getConversations(),
+          safeFetch(getBuyerDashboardStats(), {}),
+          safeFetch(getRecommendations(), { books: [] }),
+          safeFetch(getRequests('outgoing'), []),
+          safeFetch(getConversations(), []),
         ])
+
         setStats(statsData)
-        const allBooks = recs.books || []
+        const allBooks = recs?.books || []
         setBooks(allBooks.slice(0, 4))
         setNearbyBooks([...allBooks].sort((a, b) => (a.distance || 99) - (b.distance || 99)).slice(0, 3))
-        setRequests(Array.isArray(reqs) ? reqs.slice(0, 3) : (reqs.requests || []).slice(0, 3))
+        
+        const reqArray = Array.isArray(reqs) ? reqs : (reqs?.requests || [])
+        setRequests(reqArray.slice(0, 3))
+        
         setChats(Array.isArray(convos) ? convos.slice(0, 3) : [])
-      } catch {
-        /* mock fallback handled in services */
+      } catch (err) {
+        console.error('Fatal dashboard load error:', err)
       } finally {
         setLoading(false)
       }
     }
     load()
+    window.addEventListener('refresh-data', load)
+    return () => window.removeEventListener('refresh-data', load)
   }, [])
 
   const recentNotifs = notifications.slice(0, 3)
@@ -89,10 +99,11 @@ export default function BuyerDashboard() {
           </div>
         </div>
 
-        <div className="mt-6 grid gap-4 sm:grid-cols-3">
-          <StatCard label="Active Requests" value={stats?.activeRequests ?? 0} icon={HiOutlineInbox} color="blue" />
-          <StatCard label="Pending Payments" value={stats?.pendingPayments ?? 0} icon={HiOutlineCreditCard} color="amber" />
-          <StatCard label="Completed Purchases" value={stats?.completedPurchases ?? 0} icon={HiOutlineCheckCircle} color="purple" />
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard label="Active Requests" value={stats?.activeRequests ?? 0} icon={HiOutlineInbox} color="blue" to="/dashboard/requests" />
+          <StatCard label="Pending Payments" value={stats?.pendingPayments ?? 0} icon={HiOutlineCreditCard} color="amber" to="/dashboard/requests" />
+          <StatCard label="Completed Purchases" value={stats?.completedPurchases ?? 0} icon={HiOutlineCheckCircle} color="purple" to="/dashboard/transactions" />
+          <StatCard label="Books Near You" value={stats?.nearbyBooksCount ?? 0} icon={HiOutlineLocationMarker} color="emerald" to="/dashboard/nearby" />
         </div>
 
         <div className="mt-8">
@@ -111,9 +122,16 @@ export default function BuyerDashboard() {
           <Button to="/dashboard/recommendations" variant="ghost" size="sm">View All</Button>
         </div>
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {books.map((book) => (
-            <BookCard key={book._id} book={book} showRecommendation />
-          ))}
+          {books.length === 0 ? (
+            <div className="col-span-4 rounded-2xl bg-white p-6 text-center shadow-md">
+              <HiOutlineSearch className="mx-auto h-8 w-8 text-gray-300" />
+              <p className="mt-2 text-sm text-gray-500">No recommendations yet. Update your grade and location for personalized picks.</p>
+            </div>
+          ) : (
+            books.map((book) => (
+              <BookCard key={book._id} book={book} showRecommendation />
+            ))
+          )}
         </div>
 
         <div className="mt-8 flex items-center justify-between">
@@ -121,9 +139,16 @@ export default function BuyerDashboard() {
           <Button to="/dashboard/nearby" variant="ghost" size="sm">View Map</Button>
         </div>
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {nearbyBooks.map((book) => (
-            <BookCard key={`nearby-${book._id}`} book={book} />
-          ))}
+          {nearbyBooks.length === 0 ? (
+            <div className="col-span-3 rounded-2xl bg-white p-6 text-center shadow-md">
+              <HiOutlineLocationMarker className="mx-auto h-8 w-8 text-gray-300" />
+              <p className="mt-2 text-sm text-gray-500">No nearby books found. Allow location access for nearby results.</p>
+            </div>
+          ) : (
+            nearbyBooks.map((book) => (
+              <BookCard key={`nearby-${book._id}`} book={book} />
+            ))
+          )}
         </div>
 
         <div className="mt-8 grid gap-6 lg:grid-cols-2">

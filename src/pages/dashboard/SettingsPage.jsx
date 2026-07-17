@@ -95,6 +95,19 @@ export default function SettingsPage() {
       textColor: 'text-emerald-700',
       badgeBg: 'bg-emerald-100',
     },
+    {
+      id: 'both',
+      label: 'Both',
+      icon: HiOutlineSwitchHorizontal,
+      description: 'Toggle between buyer & seller views dynamically.',
+      color: 'purple',
+      gradient: 'from-purple-500 to-purple-600',
+      bgLight: 'bg-purple-50',
+      border: 'border-purple-400',
+      ring: 'ring-purple-400',
+      textColor: 'text-purple-700',
+      badgeBg: 'bg-purple-100',
+    },
   ]
 
   const currentRole = user?.role || 'buyer'
@@ -105,7 +118,7 @@ export default function SettingsPage() {
       <PageTransition>
         <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 
-        <div className="mt-6 max-w-xl rounded-2xl bg-white p-6 shadow-md">
+        <div className="mt-6 max-w-2xl rounded-2xl bg-white p-6 shadow-md">
 
           {/* ──────── ROLE TAB ──────── */}
           {activeTab === 'role' && (
@@ -124,20 +137,24 @@ export default function SettingsPage() {
                   className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
                     currentRole === 'seller'
                       ? 'bg-emerald-100 text-emerald-700'
+                      : currentRole === 'both'
+                      ? 'bg-purple-100 text-purple-700'
                       : 'bg-blue-100 text-blue-700'
                   }`}
                 >
                   {currentRole === 'seller' ? (
                     <HiOutlineTag className="h-3.5 w-3.5" />
+                  ) : currentRole === 'both' ? (
+                    <HiOutlineSwitchHorizontal className="h-3.5 w-3.5" />
                   ) : (
                     <HiOutlineShoppingBag className="h-3.5 w-3.5" />
                   )}
-                  {currentRole.charAt(0).toUpperCase() + currentRole.slice(1)}
+                  {currentRole === 'both' ? 'Both' : currentRole.charAt(0).toUpperCase() + currentRole.slice(1)}
                 </span>
               </div>
 
               {/* Role Cards */}
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 {roles.map((role) => {
                   const Icon = role.icon
                   const isSelected = selectedRole === role.id

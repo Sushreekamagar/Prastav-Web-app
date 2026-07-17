@@ -57,27 +57,51 @@ export default function ChatPage() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  // Connect socket once on mount (token-based)
   useEffect(() => {
     if (!token) return
     const socket = createChatSocket(token)
     socketRef.current = socket
     if (socket) {
       socket.on('new_message', (msg) => {
-        setMessages((prev) => [...prev, msg])
+        setMessages((prev) => {
+          // Avoid duplicates from our own sends
+          if (prev.some((m) => m._id === msg._id)) return prev
+          return [...prev, msg]
+        })
       })
-      return () => socket.disconnect()
+      return () => {
+        socket.disconnect()
+        socketRef.current = null
+      }
     }
-  }, [token, activeId])
+  }, [token])
+
+  // Emit join_room whenever the active conversation changes
+  useEffect(() => {
+    if (!activeId || !socketRef.current) return
+    socketRef.current.emit('join_room', { conversationId: activeId })
+  }, [activeId])
 
   const handleSend = async (e) => {
     e.preventDefault()
     if (!text.trim() || !activeId) return
+    const textToSend = text.trim()
     setSending(true)
+    // Optimistically add the message to the local state immediately
+    const optimisticMsg = {
+      _id: `local_${Date.now()}`,
+      senderId: user?._id,
+      text: textToSend,
+      createdAt: new Date().toISOString(),
+    }
+    setMessages((prev) => [...prev, optimisticMsg])
+    setText('')
     try {
-      const msg = await sendMessage(activeId, text.trim())
-      setMessages((prev) => [...prev, msg])
-      setText('')
-      socketRef.current?.emit('send_message', { conversationId: activeId, text: text.trim() })
+      // Emit via socket so the other party receives it in real time
+      socketRef.current?.emit('send_message', { conversationId: activeId, text: textToSend })
+      // Also persist via REST (fire-and-forget; the optimistic msg is already shown)
+      sendMessage(activeId, textToSend).catch(() => {})
     } catch (err) {
       toast.error(err.message || 'Failed to send message')
     } finally {

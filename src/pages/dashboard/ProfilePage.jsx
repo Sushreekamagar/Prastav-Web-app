@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
-import { HiOutlineStar, HiOutlineShieldCheck, HiOutlineBookOpen } from 'react-icons/hi'
+import { HiOutlineStar, HiOutlineShieldCheck, HiOutlineBookOpen, HiOutlineLocationMarker } from 'react-icons/hi'
 import { toast } from 'react-toastify'
 import { DashboardPage } from '../../layouts/DashboardLayout'
 import Avatar from '../../components/ui/Avatar'
@@ -12,7 +12,7 @@ import Badge from '../../components/ui/Badge'
 import PageTransition from '../../components/ui/PageTransition'
 import { useAuth } from '../../context/AuthContext'
 import { useDashboardMode } from '../../hooks/useDashboardMode'
-import { updateProfile, uploadProfileAvatar, uploadPaymentQr } from '../../services/authService'
+import { updateProfile, uploadProfileAvatar, uploadPaymentQr, updateLocation } from '../../services/authService'
 import { getMyListings } from '../../services/bookService'
 import { getRequests } from '../../services/requestService'
 import { GRADES, NEPAL_DISTRICTS, USER_ROLES } from '../../utils/bookConstants'
@@ -102,6 +102,34 @@ export default function ProfilePage() {
     }
   }
 
+  const handleDetectLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error('Geolocation is not supported by your browser')
+      return
+    }
+    setLoading(true)
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const updated = await updateLocation({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          })
+          updateUser(updated)
+          toast.success('GPS Location updated successfully!')
+        } catch (err) {
+          toast.error(err.message || 'Failed to save location coordinates')
+        } finally {
+          setLoading(false)
+        }
+      },
+      (err) => {
+        toast.error(`Error finding location: ${err.message}. Please allow location access.`)
+        setLoading(false)
+      }
+    )
+  }
+
   return (
     <DashboardPage title="Profile" subtitle="Manage your account and reputation">
       <PageTransition>
@@ -172,6 +200,26 @@ export default function ProfilePage() {
                   {...register('grade', { required: 'Grade is required' })}
                 />
               </div>
+              
+              <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div>
+                    <h4 className="font-semibold text-gray-900 text-sm flex items-center gap-1.5">
+                      <HiOutlineLocationMarker className="h-4 w-4 text-prastav-700" />
+                      GPS Location Coordinates
+                    </h4>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {user?.location?.coordinates && user.location.coordinates[0] !== 0 && user.location.coordinates[1] !== 0
+                        ? `Configured: [${user.location.coordinates[1].toFixed(4)}° N, ${user.location.coordinates[0].toFixed(4)}° E]`
+                        : 'Not configured yet ( Kathmandu defaults will be used for calculations)'}
+                    </p>
+                  </div>
+                  <Button type="button" variant="outline" size="sm" onClick={handleDetectLocation} disabled={loading}>
+                    Update GPS Location
+                  </Button>
+                </div>
+              </div>
+
               <Input label="Bio" {...register('bio')} />
               <Select
                 label="Role"

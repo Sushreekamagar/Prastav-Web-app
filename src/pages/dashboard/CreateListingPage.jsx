@@ -6,10 +6,13 @@ import BookForm from '../../components/books/BookForm'
 import { LoadingScreen } from '../../components/ui/Spinner'
 import { createListing, updateListing, getBookById } from '../../services/bookService'
 
+import { useAuth } from '../../context/AuthContext'
+
 export default function CreateListingPage() {
   const { id } = useParams()
   const isEdit = Boolean(id)
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [loading, setLoading] = useState(false)
   const [initialData, setInitialData] = useState(null)
   const [fetching, setFetching] = useState(isEdit)
@@ -35,10 +38,27 @@ export default function CreateListingPage() {
 
   const handleSubmit = async (data) => {
     setLoading(true)
+    const lat = user?.location?.coordinates?.[1] || 27.7172
+    const lng = user?.location?.coordinates?.[0] || 85.324
+
+    // Map fields to match backend expectations
     const payload = {
-      ...data,
+      title: data.title,
+      author: data.author,
+      isbn: data.isbn || '',
+      subject: data.category, // backend expects subject
+      grade: data.grade,
+      condition: data.condition,
+      listingType: data.listingType,
       price: data.listingType === 'sell' ? Number(data.price) : 0,
+      description: data.description || '',
       keywords: data.keywords.split(',').map((k) => k.trim()).filter(Boolean),
+      latitude: lat,
+      longitude: lng,
+    }
+
+    if (data.image && data.image[0]) {
+      payload.image = data.image[0]
     }
 
     try {

@@ -54,6 +54,8 @@ export default function SellerDashboard() {
       }
     }
     load()
+    window.addEventListener('refresh-data', load)
+    return () => window.removeEventListener('refresh-data', load)
   }, [])
 
   const recentNotifs = notifications.slice(0, 3)
@@ -84,11 +86,11 @@ export default function SellerDashboard() {
         </div>
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-          <StatCard label="Total Books" value={stats?.totalBooks ?? listings.length} icon={HiOutlineBookOpen} />
-          <StatCard label="Pending Requests" value={stats?.pendingRequests ?? 0} icon={HiOutlineInbox} color="blue" />
-          <StatCard label="Active Transactions" value={stats?.activeTransactions ?? 0} icon={HiOutlineSwitchHorizontal} color="amber" />
-          <StatCard label="Completed Sales" value={stats?.completedSales ?? 0} icon={HiOutlineCheckCircle} color="purple" />
-          <StatCard label="Reputation" value={`${stats?.reputation ?? user?.reputation ?? '—'} ★`} icon={HiOutlineStar} />
+          <StatCard label="Total Books" value={stats?.totalBooks ?? listings.length} icon={HiOutlineBookOpen} to="/dashboard/listings" />
+          <StatCard label="Pending Requests" value={stats?.pendingRequests ?? 0} icon={HiOutlineInbox} color="blue" to="/dashboard/requests?type=incoming" />
+          <StatCard label="Active Transactions" value={stats?.activeTransactions ?? 0} icon={HiOutlineSwitchHorizontal} color="amber" to="/dashboard/transactions" />
+          <StatCard label="Completed Sales" value={stats?.completedSales ?? 0} icon={HiOutlineCheckCircle} color="purple" to="/dashboard/transactions" />
+          <StatCard label="Reputation" value={`${(stats?.reputationScore ?? user?.reputationScore ?? 3.0).toFixed(1)} ★`} icon={HiOutlineStar} to="/dashboard/profile" />
         </div>
 
         <div className="mt-8">

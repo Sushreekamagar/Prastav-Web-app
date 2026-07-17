@@ -9,24 +9,31 @@ import PageTransition from '../../components/ui/PageTransition'
 import EmptyState from '../../components/ui/EmptyState'
 import { getRequests } from '../../services/requestService'
 import { formatDate, formatPrice } from '../../utils/formatters'
-import { REQUEST_STATUS } from '../../utils/bookConstants'
+import { REQUEST_STATUS, TRANSACTION_STATUSES } from '../../utils/bookConstants'
+import { useDashboardMode } from '../../hooks/useDashboardMode'
 
 export default function TransactionsPage() {
   const [transactions, setTransactions] = useState([])
   const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
+  const { isSeller } = useDashboardMode()
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const data = await getRequests('transactions')
-      setTransactions(Array.isArray(data) ? data : data.requests || [])
+      // Fetch both outgoing (buyer) and incoming (seller) transactions based on role
+      const type = isSeller ? 'incoming' : 'outgoing'
+      const data = await getRequests(type)
+      const allRequests = Array.isArray(data) ? data : (data.requests || [])
+      // Filter to only show transaction-stage statuses (accepted onwards)
+      const txs = allRequests.filter((r) => TRANSACTION_STATUSES.includes(r.status))
+      setTransactions(txs)
     } catch {
       setTransactions([])
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [isSeller])
 
   useEffect(() => {
     load()
@@ -41,19 +48,19 @@ export default function TransactionsPage() {
       render: (row) => row.book?.title || '—',
     },
     {
-      key: 'buyer',
-      label: 'Buyer',
-      render: (row) => row.buyer?.name || '—',
-    },
-    {
-      key: 'seller',
-      label: 'Seller',
-      render: (row) => row.seller?.name || row.book?.seller?.name || '—',
+      key: 'counterparty',
+      label: isSeller ? 'Buyer' : 'Seller',
+      render: (row) => isSeller ? (row.buyer?.name || '—') : (row.seller?.name || '—'),
     },
     {
       key: 'price',
       label: 'Price',
-      render: (row) => formatPrice(row.book?.price),
+      render: (row) => formatPrice(row.book?.price || row.paymentAmount),
+    },
+    {
+      key: 'paymentMethod',
+      label: 'Payment',
+      render: (row) => row.paymentMethod ? row.paymentMethod.toUpperCase() : '—',
     },
     {
       key: 'createdAt',
@@ -64,22 +71,26 @@ export default function TransactionsPage() {
       key: 'status',
       label: 'Status',
       render: (row) => {
-        const info = REQUEST_STATUS[row.status] || REQUEST_STATUS.pending
+        const info = REQUEST_STATUS[row.status] || REQUEST_STATUS.accepted
         return <Badge variant={info.variant}>{info.label}</Badge>
       },
     },
   ]
 
   return (
-    <DashboardPage title="Transactions" subtitle="Track your book exchange transactions">
+    <DashboardPage title="Transactions" subtitle="Track your active and completed book exchange transactions">
       <PageTransition>
         {transactions.length === 0 ? (
           <EmptyState
             icon={HiOutlineSwitchHorizontal}
             title="No transactions yet"
-            description="Transactions appear after a request is accepted."
-            actionLabel="View Requests"
-            actionTo="/dashboard/requests"
+            description={
+              isSeller
+                ? 'Transactions appear after you accept a buyer\'s request.'
+                : 'Transactions appear after a seller accepts your request.'
+            }
+            actionLabel={isSeller ? 'View Requests' : 'Browse Books'}
+            actionTo={isSeller ? '/dashboard/requests' : '/dashboard/books'}
           />
         ) : (
           <DataTable
@@ -91,12 +102,12 @@ export default function TransactionsPage() {
               {
                 key: 'status',
                 label: 'Status',
-                options: Object.entries(REQUEST_STATUS).map(([value, { label }]) => ({ value, label })),
+                options: TRANSACTION_STATUSES.map((s) => ({ value: s, label: REQUEST_STATUS[s]?.label || s })),
               },
             ]}
             statusKey="status"
             statusMap={REQUEST_STATUS}
-            onView={(row) => navigate(`/dashboard/transactions/${row._id}`)}
+            onView={(row) => navigate(`/dashboard/requests/${row._id}`)}
             emptyTitle="No transactions found"
           />
         )}
