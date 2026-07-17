@@ -3,6 +3,7 @@ const Book = require('../models/Book');
 const User = require('../models/User');
 const Notification = require('../models/Notification');
 const { sendNotificationEmail } = require('../services/emailService');
+const { calculateHaversine } = require('../services/haversineService');
  
 // ────────────────────────────────────────────────────────────────────────────
 // ────────────────────────────────────────────────────────────────────────────
@@ -42,13 +43,19 @@ const createTransaction = async (req, res) => {
     if (!bookId) {
       return res.status(400).json({ success: false, message: 'bookId is required.' });
     }
-    if (!['Delivery', 'Exchange', 'Donation'].includes(requestType)) {
-      return res.status(400).json({ success: false, message: 'Invalid requestType.' });
+    if (!['Delivery', 'Self-Pickup', 'Exchange', 'Donation'].includes(requestType)) {
+      return res.status(400).json({ success: false, message: 'Invalid requestType. Must be Delivery, Self-Pickup, Exchange, or Donation.' });
     }
  
     const book = await Book.findById(bookId).populate('seller');
     if (!book) return res.status(404).json({ success: false, message: 'Book not found.' });
     if (!book.isAvailable) return res.status(400).json({ success: false, message: 'This book is no longer available.' });
+    
+    // Dataset books have no seller — they cannot be requested directly
+    if (!book.seller) {
+      return res.status(400).json({ success: false, message: 'This book is from the dataset catalog and has no seller. Only user-listed books can be requested.' });
+    }
+    
     if (book.seller._id.toString() === req.user._id.toString()) {
       return res.status(400).json({ success: false, message: 'You cannot request your own book.' });
     }
@@ -63,15 +70,39 @@ const createTransaction = async (req, res) => {
       return res.status(400).json({ success: false, message: 'You already have an active request for this book.' });
     }
  
+    let finalPaymentMethod = paymentMethod || 'free';
+    let finalPaymentStatus = 'not_required';
+
+    if (book.listingType === 'sell' || book.price > 0) {
+      if (requestType === 'Delivery') {
+        if (!['esewa', 'khalti'].includes(paymentMethod)) {
+          return res.status(400).json({ success: false, message: 'Home Delivery only supports online QR payments (eSewa or Khalti).' });
+        }
+        finalPaymentStatus = 'pending';
+      } else if (requestType === 'Self-Pickup') {
+        // Self-Pickup always uses Cash on Delivery
+        finalPaymentMethod = 'cod';
+        finalPaymentStatus = 'pending';
+      } else {
+        // Exchange or Donation
+        finalPaymentMethod = 'free';
+        finalPaymentStatus = 'not_required';
+      }
+    } else {
+      // Free listing (donate / exchange)
+      finalPaymentMethod = 'free';
+      finalPaymentStatus = 'not_required';
+    }
+
     const transaction = await Transaction.create({
       book: bookId,
       requester: req.user._id,
       lister: book.seller._id,
       requestType,
       meetingLandmark: meetingLandmark || null,
-      paymentMethod: book.price > 0 ? paymentMethod : 'free',
-      paymentStatus: 'not_required',
-      paymentAmount: book.price,
+      paymentMethod: finalPaymentMethod,
+      paymentStatus: finalPaymentStatus,
+      paymentAmount: book.price || 0,
     });
  
     // Email notification to seller
@@ -158,16 +189,26 @@ const respondToTransaction = async (req, res) => {
     }
  
     // ── Accepted ──────────────────────────────────────────────────────
-    // If book is free → skip payment, go straight to payment_completed
-    // If book has price → go to payment_pending (buyer must pay)
-    if (transaction.paymentAmount > 0) {
-      transaction.status = 'payment_pending';
-      transaction.paymentStatus = 'pending';
+    if (transaction.requestType === 'Delivery') {
+      if (transaction.paymentAmount > 0) {
+        transaction.status = 'payment_pending';
+        transaction.paymentStatus = 'pending';
+      } else {
+        transaction.status = 'payment_completed';
+        transaction.paymentStatus = 'not_required';
+      }
     } else {
-      transaction.status = 'payment_completed';
-      transaction.paymentStatus = 'not_required';
+      // Self-Pickup (COD or Free)
+      transaction.status = 'accepted';
+      if (transaction.paymentAmount > 0) {
+        transaction.paymentStatus = 'pending';
+        transaction.paymentMethod = 'cod';
+      } else {
+        transaction.paymentStatus = 'not_required';
+      }
     }
  
+    transaction.acceptedAt = new Date();
     await transaction.save();
  
     // Mark book as unavailable so others can't request it
@@ -397,12 +438,18 @@ const completeTransaction = async (req, res) => {
       });
     }
  
+    if (transaction.paymentMethod === 'cod') {
+      transaction.paymentStatus = 'completed';
+    }
     transaction.status = 'completed';
     transaction.completedAt = new Date();
     await transaction.save();
+
+    // Archive the book listing so it is removed from active catalog
+    await Book.findByIdAndUpdate(transaction.book._id || transaction.book, { isAvailable: false, isDeleted: true });
  
     // In-app Notification to both parties
-    await Notification.create([
+    const notificationsToCreate = [
       {
         recipient: transaction.requester._id || transaction.requester,
         sender: transaction.lister._id || transaction.lister,
@@ -421,7 +468,21 @@ const completeTransaction = async (req, res) => {
         relatedBook: transaction.book?._id,
         relatedTransaction: transaction._id,
       }
-    ]);
+    ];
+
+    if (transaction.paymentMethod === 'cod') {
+      notificationsToCreate.push({
+        recipient: transaction.requester._id || transaction.requester,
+        sender: transaction.lister._id || transaction.lister,
+        title: 'COD Payment Received',
+        message: `Cash on Delivery payment of NPR ${transaction.paymentAmount} has been marked as received.`,
+        type: 'system',
+        relatedBook: transaction.book?._id,
+        relatedTransaction: transaction._id,
+      });
+    }
+
+    await Notification.create(notificationsToCreate);
  
     res.status(200).json({
       success: true,
@@ -448,18 +509,22 @@ const cancelTransaction = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Only the buyer can cancel this request.' });
     }
 
-    if (!['pending'].includes(transaction.status)) {
+    const isPending = transaction.status === 'pending';
+    const isDeliveryPendingPayment = transaction.status === 'payment_pending' && transaction.requestType === 'Delivery';
+    const isCodAccepted = transaction.status === 'accepted' && transaction.requestType !== 'Delivery';
+
+    if (!isPending && !isDeliveryPendingPayment && !isCodAccepted) {
       return res.status(400).json({
         success: false,
-        message: `Cannot cancel — current status is "${transaction.status}". Only pending requests can be cancelled.`,
+        message: `Cannot cancel request at this stage (current status is "${transaction.status}").`,
       });
     }
 
     transaction.status = 'cancelled';
     await transaction.save();
 
-    // Restore book availability
-    await Book.findByIdAndUpdate(transaction.book?._id, { isAvailable: true });
+    // Restore book availability so other buyers can request it
+    await Book.findByIdAndUpdate(transaction.book?._id || transaction.book, { isAvailable: true, isDeleted: false });
 
     // Notify the seller
     await Notification.create({
@@ -527,7 +592,24 @@ const rateTransaction = async (req, res) => {
     }
  
     await transaction.save();
- 
+
+    // Create rating notification
+    try {
+      const populatedTx = await Transaction.findById(transaction._id).populate('book', 'title');
+      const targetUser = isRequester ? transaction.lister : transaction.requester;
+      await Notification.create({
+        recipient: targetUser,
+        sender: req.user._id,
+        title: 'New Rating Received',
+        message: `You received a ${score}-star rating for "${populatedTx.book?.title || 'your book'}".`,
+        type: 'rating_received',
+        relatedBook: populatedTx.book?._id,
+        relatedTransaction: transaction._id,
+      });
+    } catch (notifErr) {
+      console.error('Error creating rating notification:', notifErr);
+    }
+
     res.status(200).json({
       success: true,
       message: 'Rating submitted. Reputation score updated.',
@@ -588,8 +670,8 @@ const getTransaction = async (req, res) => {
   try {
     const transaction = await Transaction.findById(req.params.id)
       .populate('book', 'title author imageUrl price condition')
-      .populate('requester', 'name reputationScore email')
-      .populate('lister', 'name reputationScore email');
+      .populate('requester', 'name reputationScore email location')
+      .populate('lister', 'name reputationScore email esewaNumber khaltiNumber esewaQR khaltiQR location');
  
     if (!transaction) return res.status(404).json({ success: false, message: 'Transaction not found.' });
  
@@ -600,7 +682,19 @@ const getTransaction = async (req, res) => {
       lisId.toString() === req.user._id.toString();
     if (!isParty) return res.status(403).json({ success: false, message: 'Not authorized.' });
  
-    res.status(200).json({ success: true, transaction });
+    let distanceKm = null;
+    if (transaction.requester?.location?.coordinates && transaction.lister?.location?.coordinates) {
+      const [reqLng, reqLat] = transaction.requester.location.coordinates;
+      const [lisLng, lisLat] = transaction.lister.location.coordinates;
+      if (reqLng !== 0 && lisLng !== 0) {
+        distanceKm = calculateHaversine(reqLat, reqLng, lisLat, lisLng);
+      }
+    }
+
+    const txObj = transaction.toObject();
+    txObj.distanceKm = distanceKm ? parseFloat(distanceKm.toFixed(2)) : null;
+
+    res.status(200).json({ success: true, transaction: txObj });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

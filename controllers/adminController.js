@@ -214,6 +214,9 @@ const getAllTransactions = asyncHandler(async (req, res, next) => {
 
   const filter = {};
   if (req.query.status) filter.status = req.query.status;
+  if (req.query.paymentStatus) filter.paymentStatus = req.query.paymentStatus;
+  if (req.query.paymentMethod) filter.paymentMethod = req.query.paymentMethod;
+  if (req.query.requestType) filter.requestType = req.query.requestType;
 
   const [transactions, total] = await Promise.all([
     Transaction.find(filter)

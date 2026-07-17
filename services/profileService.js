@@ -16,12 +16,19 @@ const getProfile = async (userId) => {
   return formatSafeUser(user);
 };
 
-const updateProfile = async (userId, { name, grade, role }) => {
+const updateProfile = async (userId, body) => {
+  const { name, grade, role, district, preferencesSet, preferences, sellerPreferences, esewaNumber, khaltiNumber } = body;
   const updates = {};
 
   if (name !== undefined) updates.name = String(name).trim();
   if (grade !== undefined) updates.grade = grade === null ? null : String(grade).trim();
   if (role !== undefined) updates.role = role;
+  if (district !== undefined) updates.district = district === null ? null : String(district).trim();
+  if (preferencesSet !== undefined) updates.preferencesSet = Boolean(preferencesSet);
+  if (preferences !== undefined) updates.preferences = preferences;
+  if (sellerPreferences !== undefined) updates.sellerPreferences = sellerPreferences;
+  if (esewaNumber !== undefined) updates.esewaNumber = esewaNumber === null ? null : String(esewaNumber).trim();
+  if (khaltiNumber !== undefined) updates.khaltiNumber = khaltiNumber === null ? null : String(khaltiNumber).trim();
 
   const user = await User.findByIdAndUpdate(userId, updates, {
     returnDocument: 'after',
@@ -34,6 +41,7 @@ const updateProfile = async (userId, { name, grade, role }) => {
 
   return formatSafeUser(user);
 };
+
 
 /**
  * updateLocation — Stores GeoJSON Point [longitude, latitude] for nearby features.

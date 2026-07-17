@@ -60,7 +60,12 @@ const protect = async (req, res, next) => {
  * Example: restrictTo('seller') allows only sellers.
  */
 const restrictTo = (...roles) => (req, res, next) => {
-  if (!roles.includes(req.user.role)) {
+  const allowed = roles.some(role => {
+    if (role === 'seller' && req.user.role === 'both') return true;
+    if (role === 'buyer' && req.user.role === 'both') return true;
+    return role === req.user.role;
+  });
+  if (!allowed) {
     return next(new AppError('You do not have permission to perform this action.', 403));
   }
   next();

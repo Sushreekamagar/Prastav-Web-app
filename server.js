@@ -28,14 +28,26 @@ const server = http.createServer(app);
 // ── Socket.io setup ───────────────────────────────────────────────────────────
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: (process.env.FRONTEND_URL || 'http://localhost:5173,http://localhost:3000').split(',').map(o => o.trim()),
     methods: ['GET', 'POST'],
+    credentials: true,
   },
 });
 socketHandler(io);
  
 // ── Global Middleware ─────────────────────────────────────────────────────────
-app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:3000' }));
+const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:5173,http://localhost:3000').split(',');
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.some(o => origin.startsWith(o.trim()))) {
+      callback(null, true);
+    } else {
+      callback(new Error(`CORS: origin ${origin} not allowed`));
+    }
+  },
+  credentials: true,
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
  
@@ -212,3 +224,14 @@ server.listen(PORT, () => {
   console.log(`📚 Books API:   http://localhost:${PORT}/api/books`);
   console.log(`🎯 Recommend:   http://localhost:${PORT}/api/recommendations\n`);
 });
+
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`\n❌ Port ${PORT} is already in use.`);
+    console.error(`   Run this to free it: npx kill-port ${PORT}`);
+    console.error(`   Or kill the process in Task Manager (node.exe)\n`);
+    process.exit(1);
+  } else {
+    throw err;
+  }
+});

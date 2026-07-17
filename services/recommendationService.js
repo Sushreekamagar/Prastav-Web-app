@@ -270,6 +270,9 @@ const formatRecommendation = (book, scores, query) => ({
   condition: book.condition,
   description: book.description,
   publishYear: book.publish_year,
+  listingType: book.listingType || null,
+  price: book.price ?? 0,
+  imageUrl: book.imageUrl || null,
   seller: book.seller
     ? {
         id: book.seller._id,
@@ -304,7 +307,8 @@ const fetchSimilarCandidates = async (sourceBook, bookIdExclude) => {
     isAvailable: { $ne: false },
     isReported: { $ne: true },
     isDeleted: { $ne: true },
-    rating: { $gte: 4 },
+    // NOTE: No rating filter here — user-listed books start with rating=0
+    // and must still appear in recommendations.
     _id: { $ne: bookIdExclude },
     $or: [
       ...(sourceBook.genre ? [{ genre: sourceBook.genre }] : []),
@@ -319,10 +323,11 @@ const fetchSimilarCandidates = async (sourceBook, bookIdExclude) => {
 
   return Book.find(filter)
     .select(
-      'book_id title author genre keywords Grade rating description condition publish_year seller location'
+      'book_id title author genre keywords Grade rating description condition publish_year seller location listingType price'
     )
     .populate('seller', 'name grade location reputationScore')
-    .sort({ rating: -1 })
+    // Prioritise real marketplace listings (seller != null) over dataset-only books
+    .sort({ seller: -1, rating: -1 })
     .limit(MAX_CANDIDATES)
     .lean();
 };
@@ -336,6 +341,7 @@ const fetchCandidates = async (queryText, bookIdExclude = null) => {
   const filter = {
     isAvailable: { $ne: false },
     isReported: { $ne: true },
+    isDeleted: { $ne: true },
   };
 
   if (bookIdExclude) {
@@ -354,10 +360,11 @@ const fetchCandidates = async (queryText, bookIdExclude = null) => {
 
   return Book.find(filter)
     .select(
-      'book_id title author genre keywords Grade rating description condition publish_year seller location'
+      'book_id title author genre keywords Grade rating description condition publish_year seller location listingType price'
     )
     .populate('seller', 'name grade location reputationScore')
-    .sort({ rating: -1, publish_year: -1 })
+    // Seller-linked listings first, then dataset books sorted by rating
+    .sort({ seller: -1, rating: -1, publish_year: -1 })
     .limit(MAX_CANDIDATES)
     .lean();
 };

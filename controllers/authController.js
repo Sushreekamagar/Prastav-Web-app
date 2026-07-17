@@ -63,10 +63,22 @@ const resetPassword = asyncHandler(async (req, res, next) => {
   });
 });
 
+// POST /api/auth/change-password
+const changePassword = asyncHandler(async (req, res, next) => {
+  const result = await authService.changePassword(req.user._id, req.body);
+
+  res.status(200).json({
+    success: true,
+    message: result.message,
+  });
+});
+
 module.exports = {
   signup,
   verifyOtp,
   login,
   forgotPassword,
   resetPassword,
+  changePassword,
 };
+

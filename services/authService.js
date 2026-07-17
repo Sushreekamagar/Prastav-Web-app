@@ -15,12 +15,14 @@ const LOCK_DURATION_MS = 5 * 60 * 1000; // 5 minutes
  * formatSafeUser — Strips sensitive fields before sending user data in JSON responses.
  */
 const formatSafeUser = (user) => ({
+  _id: user._id,
   id: user._id,
   name: user.name,
   email: user.email,
   role: user.role,
   profileImage: user.profileImage,
   grade: user.grade,
+  district: user.district,
   location: user.location,
   reputationScore: user.reputationScore,
   esewaNumber: user.esewaNumber,
@@ -30,6 +32,9 @@ const formatSafeUser = (user) => ({
   isVerified: user.isVerified,
   status: user.status,
   isReported: user.isReported,
+  preferencesSet: user.preferencesSet,
+  preferences: user.preferences,
+  sellerPreferences: user.sellerPreferences,
   createdAt: user.createdAt,
   updatedAt: user.updatedAt,
 });
@@ -232,11 +237,38 @@ const resetPassword = async (body) => {
   };
 };
 
+/**
+ * changePassword — Verify current password and update with new hashed password.
+ */
+const changePassword = async (userId, body) => {
+  const { currentPassword, newPassword } = body || {};
+  if (!currentPassword || !newPassword) {
+    throw new AppError('Current password and new password are required.', 400);
+  }
+
+  const user = await User.findById(userId).select('+password');
+  if (!user) {
+    throw new AppError('User not found.', 404);
+  }
+
+  const isMatch = await user.comparePassword(currentPassword);
+  if (!isMatch) {
+    throw new AppError('Incorrect current password.', 401);
+  }
+
+  user.password = newPassword;
+  await user.save();
+
+  return { message: 'Password updated successfully.' };
+};
+
 module.exports = {
   signup,
   verifyOtp,
   login,
   forgotPassword,
   resetPassword,
+  changePassword,
   formatSafeUser,
 };
+

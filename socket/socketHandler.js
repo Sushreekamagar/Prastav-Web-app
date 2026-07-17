@@ -142,10 +142,37 @@ const socketHandler = (io) => {
       }
     });
  
+    // ── Frontend style join ──────────────────────────────────────────
+    socket.on('join_room', async ({ conversationId }) => {
+      socket.join(conversationId);
+      console.log(`🔌 User ${socket.userId} joined conversation room ${conversationId}`);
+    });
+
+    // ── Frontend style message send ───────────────────────────────────
+    socket.on('send_message', async ({ conversationId, text }) => {
+      try {
+        if (!text || text.trim() === '') return;
+
+        const conversation = await Conversation.findById(conversationId);
+        if (!conversation) return;
+
+        // Broadcast the new message to everyone else in the conversation room
+        socket.to(conversationId).emit('new_message', {
+          _id: `msg_socket_${Date.now()}`,
+          senderId: socket.userId,
+          text: text.trim(),
+          createdAt: new Date().toISOString(),
+        });
+      } catch (err) {
+        console.error('❌ Socket message broadcast failed:', err.message);
+      }
+    });
+
     socket.on('disconnect', () => {
       console.log(`❌ Socket disconnected: ${socket.userId}`);
     });
   });
 };
+
  
 module.exports = socketHandler;

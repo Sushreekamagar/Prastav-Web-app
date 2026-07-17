@@ -399,7 +399,7 @@ const getSimilarBooks = async (bookId, query = {}) => {
 // ── Seller listing operations (existing marketplace features) ─────────────────
 
 const createBook = async (userId, body, file) => {
-  const { title, author, subject, grade, condition, description, price, latitude, longitude } =
+  const { title, author, subject, grade, condition, description, price, latitude, longitude, keywords, isbn, listingType } =
     body;
 
   if (!latitude || !longitude) {
@@ -413,6 +413,9 @@ const createBook = async (userId, body, file) => {
     Grade: grade,
     condition,
     description: description || '',
+    keywords: keywords || '',
+    isbn: isbn || undefined,
+    listingType: listingType || 'sell',
     price: parseFloat(price) || 0,
     seller: userId,
     imageUrl: file ? `/uploads/books/${file.filename}` : null,

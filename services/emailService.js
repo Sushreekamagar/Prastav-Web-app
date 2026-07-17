@@ -3,12 +3,23 @@ const AppError = require('../utils/AppError');
 
 /**
  * Email Service — handles all outbound emails via Nodemailer.
- * Configure SMTP credentials in .env (EMAIL_HOST, EMAIL_PORT, EMAIL_USER, EMAIL_PASS).
+ * Supports Gmail SMTP (smtp.gmail.com:587) with App Passwords.
  *
- * Dev mode: set EMAIL_DEV_MODE=true OR replace placeholder credentials in .env.
- * OTP is printed in the server terminal instead of sending email.
+ * Gmail Setup:
+ *   1. Google Account > Security > Enable 2-Step Verification
+ *   2. Security > App Passwords > Select "Mail" > Generate
+ *   3. Copy the 16-digit password into EMAIL_PASS in .env
+ *   4. Set EMAIL_DEV_MODE=false to send real emails
+ *
+ * Dev mode: set EMAIL_DEV_MODE=true to skip sending and log OTP to terminal.
  */
-const PLACEHOLDER_VALUES = ['your_mailtrap_user', 'your_mailtrap_pass', ''];
+const PLACEHOLDER_VALUES = [
+  'your_gmail@gmail.com',
+  'your_16_digit_app_password',
+  'your_mailtrap_user',
+  'your_mailtrap_pass',
+  '',
+];
 
 const isPlaceholder = (value) =>
   !value || PLACEHOLDER_VALUES.includes(String(value).trim());
@@ -18,16 +29,24 @@ const isDevMode = () =>
   isPlaceholder(process.env.EMAIL_USER) ||
   isPlaceholder(process.env.EMAIL_PASS);
 
-const getTransporter = () =>
-  nodemailer.createTransport({
-    host: process.env.EMAIL_HOST,
-    port: parseInt(process.env.EMAIL_PORT, 10) || 2525,
-    secure: false,
+/**
+ * Builds a Nodemailer transporter for Gmail SMTP (port 587, STARTTLS).
+ */
+const getTransporter = () => {
+  const port = parseInt(process.env.EMAIL_PORT, 10) || 587;
+  return nodemailer.createTransport({
+    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+    port,
+    secure: port === 465, // true for port 465 (SSL), false for 587 (STARTTLS)
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS,
     },
+    tls: {
+      rejectUnauthorized: false, // avoids self-signed cert issues in dev
+    },
   });
+};
 
 /**
  * generateOTP — Returns a random 6-digit OTP string.
@@ -36,29 +55,31 @@ const generateOTP = () =>
   Math.floor(100000 + Math.random() * 900000).toString();
 
 /**
- * sendMail — Sends email via SMTP, or logs OTP in dev mode.
+ * sendMail — Sends email via SMTP, or logs OTP to terminal in dev mode.
  */
 const sendMail = async ({ to, subject, html, context, otp }) => {
   if (isDevMode()) {
     console.log('\n📧 [DEV MODE] Email not sent — OTP logged below');
-    console.log(`   To: ${to}`);
-    console.log(`   Context: ${context}`);
-    console.log(`   OTP: ${otp}`);
-    console.log('   Tip: Set real Mailtrap credentials in .env or keep EMAIL_DEV_MODE=true\n');
+    console.log(`   To      : ${to}`);
+    console.log(`   Context : ${context}`);
+    console.log(`   OTP     : ${otp}`);
+    console.log('   Tip: Fill EMAIL_USER and EMAIL_PASS in .env and set EMAIL_DEV_MODE=false\n');
     return;
   }
 
   try {
     const transporter = getTransporter();
     await transporter.sendMail({
-      from: `"Prastav" <${process.env.EMAIL_USER}>`,
+      from: `"Prastav" <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`,
       to,
       subject,
       html,
     });
+    console.log(`✅ Email sent to ${to} — ${subject}`);
   } catch (error) {
+    console.error('❌ Email send failed:', error.message);
     throw new AppError(
-      `Failed to send email. Check EMAIL_USER and EMAIL_PASS in .env. (${error.message})`,
+      `Failed to send email to ${to}. (${error.message})`,
       500
     );
   }
