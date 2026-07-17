@@ -21,14 +21,34 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    // Network error — backend is unreachable (proxy 500 or ECONNREFUSED)
+    if (!error.response) {
+      const networkError = new Error('Cannot connect to the server. Please make sure the backend is running.')
+      networkError.isNetworkError = true
+      return Promise.reject(networkError)
+    }
+
+    const status = error.response.status
+    // Extract the most useful message from backend JSON
+    const backendMessage = error.response.data?.message || error.response.data?.error || error.message
+
+    if (status === 401) {
       localStorage.removeItem('prastav_token')
       localStorage.removeItem('prastav_user')
-      if (!window.location.pathname.startsWith('/login')) {
+      // Only redirect if NOT on an auth page already
+      if (!window.location.pathname.startsWith('/login') &&
+          !window.location.pathname.startsWith('/signup') &&
+          !window.location.pathname.startsWith('/forgot-password') &&
+          !window.location.pathname.startsWith('/reset-password')) {
         window.location.href = '/login'
       }
     }
-    return Promise.reject(error)
+
+    // Override the error message with the backend's human-readable message
+    const enhancedError = new Error(backendMessage)
+    enhancedError.response = error.response
+    enhancedError.status = status
+    return Promise.reject(enhancedError)
   },
 )
 

@@ -1,44 +1,48 @@
 import api from './api'
-import { MOCK_NOTIFICATIONS } from '../utils/mockData'
 
-const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
+function normalizeNotification(n) {
+  if (!n) return null
+  return {
+    _id: n._id,
+    title: n.title,
+    message: n.message,
+    type: normalizeType(n.type),
+    read: n.isRead ?? n.read ?? false,
+    isRead: n.isRead ?? n.read ?? false,
+    transactionId: n.relatedTransaction?._id || n.relatedTransaction || n.transactionId || null,
+    requestId: n.relatedTransaction?._id || n.relatedTransaction || n.requestId || null,
+    bookId: n.relatedBook?._id || n.relatedBook || n.bookId || null,
+    createdAt: n.createdAt,
+  }
+}
+
+function normalizeType(type) {
+  if (!type) return 'transaction'
+  if (type.includes('request')) return 'request'
+  if (type.includes('payment')) return 'payment'
+  if (type.includes('transaction') || type.includes('completed')) return 'transaction'
+  if (type.includes('rating')) return 'rating'
+  if (type.includes('recommendation')) return 'recommendation'
+  return 'transaction'
+}
 
 export async function getNotifications() {
-  if (USE_MOCK) {
-    await delay(400)
-    return MOCK_NOTIFICATIONS
-  }
   const { data } = await api.get('/notifications')
-  return data
+  const raw = Array.isArray(data) ? data : (data.notifications || data.data || [])
+  return raw.map(normalizeNotification).filter(Boolean)
 }
 
 export async function markNotificationRead(id) {
-  if (USE_MOCK) {
-    await delay(200)
-    return { _id: id, read: true }
-  }
-  const { data } = await api.patch(`/notifications/${id}/read`)
+  const { data } = await api.put(`/notifications/${id}/read`)
   return data
 }
 
 export async function markAllNotificationsRead() {
-  if (USE_MOCK) {
-    await delay(300)
-    return { message: 'All notifications marked as read' }
-  }
-  const { data } = await api.patch('/notifications/read-all')
+  const { data } = await api.put('/notifications/read-all')
   return data
 }
 
 export async function deleteNotification(id) {
-  if (USE_MOCK) {
-    await delay(200)
-    return { message: 'Notification deleted' }
-  }
   const { data } = await api.delete(`/notifications/${id}`)
   return data
-}
-
-function delay(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms))
 }

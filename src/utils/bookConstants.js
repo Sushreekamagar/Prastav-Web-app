@@ -96,5 +96,15 @@ export const SELLER_NAV = [
   { label: 'Settings', path: '/dashboard/settings', icon: 'settings' },
 ]
 
+export const ADMIN_NAV = [
+  { label: 'Admin Dashboard', path: '/dashboard', icon: 'home' },
+  { label: 'Manage Users', path: '/dashboard/admin/users', icon: 'users' },
+  { label: 'Manage Books', path: '/dashboard/admin/books', icon: 'books' },
+  { label: 'Manage Transactions', path: '/dashboard/admin/transactions', icon: 'transactions' },
+  { label: 'Audit Logs', path: '/dashboard/admin/logs', icon: 'logs' },
+  { label: 'Profile', path: '/dashboard/profile', icon: 'profile' },
+  { label: 'Settings', path: '/dashboard/settings', icon: 'settings' },
+]
+
 /** @deprecated Use BUYER_NAV or SELLER_NAV */
 export const DASHBOARD_NAV = BUYER_NAV

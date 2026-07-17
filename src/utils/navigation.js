@@ -9,6 +9,7 @@ export function getDashboardHomePath(role, mode) {
 }
 
 export function getRoleLabel(role, mode) {
+  if (role === 'admin') return 'Admin'
   if (role === 'both') return mode === 'seller' ? 'Seller' : 'Buyer'
   return role === 'seller' ? 'Seller' : 'Buyer'
 }
@@ -25,6 +26,9 @@ export const ROUTE_BREADCRUMBS = {
   '/dashboard/profile': [{ label: 'Dashboard', to: '/dashboard' }, { label: 'Profile' }],
   '/dashboard/settings': [{ label: 'Dashboard', to: '/dashboard' }, { label: 'Settings' }],
   '/dashboard/listings': [{ label: 'Dashboard', to: '/dashboard' }, { label: 'My Books' }],
+  '/dashboard/admin/users': [{ label: 'Dashboard', to: '/dashboard' }, { label: 'Manage Users' }],
+  '/dashboard/admin/books': [{ label: 'Dashboard', to: '/dashboard' }, { label: 'Manage Books' }],
+  '/dashboard/admin/logs': [{ label: 'Dashboard', to: '/dashboard' }, { label: 'Audit Logs' }],
   '/dashboard/listings/new': [
     { label: 'Dashboard', to: '/dashboard' },
     { label: 'My Books', to: '/dashboard/listings' },

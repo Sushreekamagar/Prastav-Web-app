@@ -1,126 +1,93 @@
 import api from './api'
-import { MOCK_USER } from '../utils/mockData'
-
-const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 
 export async function loginUser(credentials) {
-  if (USE_MOCK) {
-    await delay(800)
-    if (credentials.email === 'demo@prastav.com' && credentials.password === 'demo123') {
-      return { user: { ...MOCK_USER, preferencesSet: true }, token: 'mock_jwt_token_' + Date.now() }
-    }
-    throw new Error('Invalid email or password. Try demo@prastav.com / demo123')
-  }
   const { data } = await api.post('/auth/login', credentials)
   return data
 }
 
 export async function registerUser(userData) {
-  if (USE_MOCK) {
-    await delay(1000)
-    return { message: 'OTP sent to your email', email: userData.email }
-  }
-  const { data } = await api.post('/auth/register', userData)
+  const { data } = await api.post('/auth/signup', userData)
   return data
 }
 
-export async function verifyOtp(email, otp) {
-  if (USE_MOCK) {
-    await delay(800)
-    if (otp === '123456') {
-      return { user: { ...MOCK_USER, email }, token: 'mock_jwt_token_' + Date.now() }
-    }
-    throw new Error('Invalid OTP. Use 123456 for demo.')
-  }
-  const { data } = await api.post('/auth/verify-otp', { email, otp })
+export async function verifyOtp(userId, otp) {
+  const { data } = await api.post('/auth/verify-otp', { userId, otp })
   return data
 }
 
 export async function resendOtp(email) {
-  if (USE_MOCK) {
-    await delay(500)
-    return { message: 'OTP resent successfully' }
-  }
   const { data } = await api.post('/auth/resend-otp', { email })
   return data
 }
 
 export async function forgotPassword(email) {
-  if (USE_MOCK) {
-    await delay(800)
-    return { message: 'Password reset link sent to your email' }
-  }
   const { data } = await api.post('/auth/forgot-password', { email })
   return data
 }
 
-export async function resetPassword(token, password) {
-  if (USE_MOCK) {
-    await delay(800)
-    return { message: 'Password reset successfully' }
-  }
-  const { data } = await api.post('/auth/reset-password', { token, password })
+export async function resetPassword({ email, otp, newPassword }) {
+  const { data } = await api.post('/auth/reset-password', { email, otp, newPassword })
   return data
 }
 
 export async function getProfile() {
-  if (USE_MOCK) {
-    await delay(500)
-    return MOCK_USER
-  }
-  const { data } = await api.get('/auth/profile')
-  return data
+  const { data } = await api.get('/profile')
+  return data.user
 }
 
 export async function updateProfile(profileData) {
-  if (USE_MOCK) {
-    await delay(800)
-    return { ...MOCK_USER, ...profileData }
-  }
-  const { data } = await api.put('/auth/profile', profileData)
-  return data
+  const { data } = await api.put('/profile', profileData)
+  return data.user
+}
+
+export async function updateLocation(coords) {
+  const { data } = await api.put('/profile/location', coords)
+  return data.user
 }
 
 export async function uploadProfileAvatar(formData) {
-  if (USE_MOCK) {
-    await delay(800)
-    return { ...MOCK_USER, avatar: 'mock-avatar-url' }
-  }
-  const { data } = await api.post('/auth/profile/avatar', formData, {
+  const file = formData.get('avatar')
+  const uploadData = new FormData()
+  uploadData.append('profileImage', file)
+
+  const { data } = await api.put('/profile/image', uploadData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   })
-  return data
+  return data.user
 }
 
 export async function uploadPaymentQr(formData) {
-  if (USE_MOCK) {
-    await delay(800)
-    return { ...MOCK_USER, esewaQr: 'mock-qr', khaltiQr: 'mock-qr' }
+  let endpoint = ''
+  let fieldName = ''
+  let file = null
+
+  if (formData.has('esewaQr')) {
+    endpoint = '/profile/esewaQR'
+    fieldName = 'esewaQR'
+    file = formData.get('esewaQr')
+  } else if (formData.has('khaltiQr')) {
+    endpoint = '/profile/khaltiQR'
+    fieldName = 'khaltiQR'
+    file = formData.get('khaltiQr')
+  } else {
+    throw new Error('Invalid payment QR type')
   }
-  const { data } = await api.post('/auth/profile/payment-qr', formData, {
+
+  const uploadData = new FormData()
+  uploadData.append(fieldName, file)
+
+  const { data } = await api.put(endpoint, uploadData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   })
-  return data
+  return data.user
 }
 
 export async function changePassword(currentPassword, newPassword) {
-  if (USE_MOCK) {
-    await delay(800)
-    return { message: 'Password updated successfully' }
-  }
   const { data } = await api.post('/auth/change-password', { currentPassword, newPassword })
   return data
 }
 
 export async function switchRole(newRole) {
-  if (USE_MOCK) {
-    await delay(800)
-    return { ...MOCK_USER, role: newRole }
-  }
   const { data } = await api.put('/profile/role', { role: newRole })
-  return data
-}
-
-function delay(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms))
+  return data.user || data
 }
