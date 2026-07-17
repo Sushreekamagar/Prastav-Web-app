@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { HiOutlineMenu, HiOutlineX, HiOutlineUserCircle } from 'react-icons/hi'
 import { motion, AnimatePresence } from 'framer-motion'
 import Container from '../ui/Container'
@@ -9,7 +9,9 @@ import { useAuth } from '../../context/AuthContext'
 
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false)
-  const { isAuthenticated, user } = useAuth()
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+  const { isAuthenticated, user, logout } = useAuth()
+  const navigate = useNavigate()
 
   return (
     <header className="sticky top-0 z-50 bg-prastav-50/95 backdrop-blur-md">
@@ -33,13 +35,45 @@ export default function Navbar() {
 
           <div className="flex items-center gap-3">
             {isAuthenticated ? (
-              <Link
-                to="/dashboard"
-                className="hidden items-center gap-2 rounded-full bg-prastav-100 px-4 py-2 text-sm font-medium text-prastav-800 transition-colors hover:bg-prastav-200 sm:flex"
-              >
-                <HiOutlineUserCircle className="h-5 w-5" />
-                {user?.name?.split(' ')[0] || 'Dashboard'}
-              </Link>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setDropdownOpen(!dropdownOpen)}
+                  className="hidden items-center gap-1.5 rounded-full bg-prastav-100 px-4 py-2 text-sm font-medium text-prastav-800 transition-colors hover:bg-prastav-200 focus:outline-none sm:flex cursor-pointer"
+                >
+                  <HiOutlineUserCircle className="h-5 w-5" />
+                  {user?.name?.split(' ')[0] || 'Dashboard'}
+                  <svg className={`h-4 w-4 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+
+                {dropdownOpen && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(false)} />
+                    <div className="absolute right-0 mt-2 w-48 rounded-xl border border-gray-100 bg-white py-1 shadow-lg z-20">
+                      <Link
+                        to="/dashboard"
+                        onClick={() => setDropdownOpen(false)}
+                        className="block px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-prastav-800"
+                      >
+                        Go to Dashboard
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDropdownOpen(false)
+                          logout()
+                          navigate('/')
+                        }}
+                        className="block w-full text-left px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 cursor-pointer"
+                      >
+                        Logout
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
             ) : (
               <>
                 <Link
@@ -91,13 +125,26 @@ export default function Navbar() {
                   </a>
                 ))}
                 {isAuthenticated ? (
-                  <Link
-                    to="/dashboard"
-                    className="rounded-lg px-3 py-2 font-medium text-prastav-800 hover:bg-prastav-100"
-                    onClick={() => setMobileOpen(false)}
-                  >
-                    Dashboard
-                  </Link>
+                  <>
+                    <Link
+                      to="/dashboard"
+                      className="rounded-lg px-3 py-2 font-medium text-prastav-800 hover:bg-prastav-100"
+                      onClick={() => setMobileOpen(false)}
+                    >
+                      Dashboard
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMobileOpen(false)
+                        logout()
+                        navigate('/')
+                      }}
+                      className="rounded-lg px-3 py-2 text-left font-medium text-red-600 hover:bg-red-50 cursor-pointer"
+                    >
+                      Logout
+                    </button>
+                  </>
                 ) : (
                   <>
                     <Link
@@ -124,3 +171,4 @@ export default function Navbar() {
     </header>
   )
 }
+

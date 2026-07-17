@@ -15,12 +15,14 @@ import {
   HiOutlineSwitchHorizontal,
   HiOutlineChatAlt2,
   HiOutlineCog,
+  HiOutlineUsers,
+  HiOutlineDatabase,
 } from 'react-icons/hi'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../../context/AuthContext'
 import { useDashboardMode } from '../../hooks/useDashboardMode'
 import { APP_NAME } from '../../utils/constants'
-import { BUYER_NAV, SELLER_NAV } from '../../utils/bookConstants'
+import { BUYER_NAV, SELLER_NAV, ADMIN_NAV } from '../../utils/bookConstants'
 import Avatar from '../ui/Avatar'
 import { getRoleLabel } from '../../utils/navigation'
 
@@ -37,6 +39,8 @@ const iconMap = {
   chat: HiOutlineChatAlt2,
   profile: HiOutlineUser,
   settings: HiOutlineCog,
+  users: HiOutlineUsers,
+  logs: HiOutlineDatabase,
 }
 
 export default function Sidebar({ mobileOpen, onMobileClose }) {
@@ -44,7 +48,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }) {
   const { user, logout } = useAuth()
   const { isSeller, mode } = useDashboardMode()
 
-  const navItems = isSeller ? SELLER_NAV : BUYER_NAV
+  const navItems = user?.role === 'admin' ? ADMIN_NAV : (isSeller ? SELLER_NAV : BUYER_NAV)
 
   const sidebarContent = (
     <div className="flex h-full flex-col">

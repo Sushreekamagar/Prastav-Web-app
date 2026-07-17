@@ -85,6 +85,16 @@ export default function BookForm({ initialData, onSubmit, loading }) {
         />
       )}
 
+      <div className="flex flex-col gap-1.5">
+        <label className="text-sm font-medium text-gray-700">Cover Image</label>
+        <input
+          type="file"
+          accept="image/*"
+          className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 file:mr-4 file:rounded-full file:border-0 file:bg-prastav-50 file:px-4 file:py-1.5 file:text-xs file:font-semibold file:text-prastav-700 hover:file:bg-prastav-100"
+          {...register('image')}
+        />
+      </div>
+
       <Textarea
         label="Description"
         placeholder="Describe the book condition, edition, and any notes..."

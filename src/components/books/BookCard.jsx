@@ -11,8 +11,10 @@ const typeVariants = {
 }
 
 export default function BookCard({ book, showRecommendation = false }) {
+  const bookId = book._id || book.id;
+  
   return (
-    <Link to={`/dashboard/books/${book._id}`} className="block">
+    <Link to={`/dashboard/books/${bookId}`} className="block">
       <Card className="flex h-full flex-col overflow-hidden p-0">
         <div className="relative flex h-40 items-center justify-center bg-gradient-to-br from-prastav-100 to-prastav-200">
           <svg viewBox="0 0 64 64" className="h-16 w-16 opacity-60" fill="none">
@@ -20,8 +22,8 @@ export default function BookCard({ book, showRecommendation = false }) {
             <path d="M34 20h14c2 0 3 1 3 3v22c0 2-1 3-3 3H34V20z" fill="#22c55e" />
           </svg>
           <div className="absolute left-3 top-3">
-            <Badge variant={typeVariants[book.listingType] || 'default'}>
-              {getListingTypeLabel(book.listingType)}
+            <Badge variant={book.seller ? (typeVariants[book.listingType] || 'default') : 'default'}>
+              {book.seller ? getListingTypeLabel(book.listingType) : 'Catalog'}
             </Badge>
           </div>
           {showRecommendation && book.recommendationScore && (
