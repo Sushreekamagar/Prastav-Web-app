@@ -166,83 +166,55 @@ export default function SignupPage() {
   const [otp, setOtp] = useState('')
   const [agreed, setAgreed] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [userId, setUserId] = useState(null)
 
   const emailValue = watch('email', '')
 
-  /* send OTP */
-  const handleSendOtp = async () => {
-    const isEmailValid = await trigger('email')
-    if (!isEmailValid) {
-      toast.error('Please enter a valid email address first')
-      return
-    }
-    
-    setSendingOtp(true)
-    try {
-      const nameVal = getValues('name') || 'Pending User'
-      const phoneVal = getValues('phone') || '9800000000'
-      const passwordVal = getValues('password') || 'TempPass123!'
-      
-      await registerUser({
-        name: nameVal,
-        email: emailValue,
-        phone: phoneVal,
-        password: passwordVal,
-        role: 'both',
-        grade: 'grade_9',
-        district: 'Kathmandu',
-        sendOtpOnly: true
-      })
-      toast.success('OTP sent to your email!')
-      setOtpSent(true)
-    } catch (err) {
-      /* fallback for mock or error responses */
-      toast.success('OTP sent! (Demo: use 123456)')
-      setOtpSent(true)
-    } finally {
-      setSendingOtp(false)
-    }
-  }
-
-  /* create account */
+  /* handle main submit button */
   const onSubmit = async (data) => {
     if (!otpSent) {
-      toast.error('Please verify your email first')
-      return
-    }
-    if (otp.length !== 6) {
-      toast.error('Enter the 6-digit OTP')
-      return
-    }
-    if (data.password !== data.confirmPassword) {
-      toast.error('Passwords do not match')
-      return
-    }
-    if (!agreed) {
-      toast.error('Please agree to the Terms of Service')
-      return
-    }
-
-    setSubmitting(true)
-    try {
-      /* register then verify OTP in one go */
-      await registerUser({ ...data, otp })
-      const result = await verifyOtp(data.email, otp)
-      login(result.user, result.token)
-      toast.success('Account created! Let\'s set your preferences 🎉')
-      navigate('/dashboard/preferences', { replace: true })
-    } catch (err) {
-      /* mock: just verify */
+      // Step 1: Send OTP
+      setSendingOtp(true)
       try {
-        const result = await verifyOtp(data.email, otp)
+        const res = await registerUser({
+          name: data.name,
+          email: data.email,
+          phone: data.phone,
+          password: data.password,
+          role: 'buyer',
+          grade: 'grade_9',
+          district: 'Kathmandu'
+        })
+        toast.success('OTP sent to your email!')
+        setUserId(res.userId)
+        setOtpSent(true)
+      } catch (err) {
+        toast.error(err.response?.data?.message || err.message || 'Failed to send OTP')
+      } finally {
+        setSendingOtp(false)
+      }
+    } else {
+      // Step 2: Verify OTP
+      if (otp.length !== 6) {
+        toast.error('Enter the 6-digit OTP')
+        return
+      }
+      if (!agreed) {
+        toast.error('Please agree to the Terms of Service')
+        return
+      }
+
+      setSubmitting(true)
+      try {
+        const result = await verifyOtp(userId, otp)
         login(result.user, result.token)
         toast.success('Account created! Let\'s set your preferences 🎉')
         navigate('/dashboard/preferences', { replace: true })
-      } catch (e) {
-        toast.error(e.message || 'Registration failed. Please try again.')
+      } catch (err) {
+        toast.error(err.response?.data?.message || err.message || 'Registration failed. Please try again.')
+      } finally {
+        setSubmitting(false)
       }
-    } finally {
-      setSubmitting(false)
     }
   }
 
@@ -287,53 +259,34 @@ export default function SignupPage() {
                   />
                 </Field>
 
-                {/* Email + Send OTP */}
+                {/* Email */}
                 <Field label="Email Address" error={errors.email?.message} icon={HiOutlineMail}>
-                  <div className="flex gap-2">
-                    <input
-                      type="email"
-                      placeholder="you@example.com"
-                      className={`${inputCls(true, !!errors.email)} flex-1`}
-                      {...register('email', {
-                        required: 'Email is required',
-                        pattern: { value: /^\S+@\S+\.\S+$/, message: 'Invalid email' },
-                      })}
-                    />
-                    <button
-                      type="button"
-                      onClick={handleSendOtp}
-                      disabled={sendingOtp || otpSent}
-                      className={`shrink-0 rounded-xl px-3 py-2 text-xs font-semibold transition-all ${
-                        otpSent
-                          ? 'bg-prastav-100 text-prastav-700 cursor-default'
-                          : 'bg-prastav-800 text-white hover:bg-prastav-700 disabled:opacity-50'
-                      }`}
-                    >
-                      {sendingOtp ? '…' : otpSent ? '✓ Sent' : 'Send OTP'}
-                    </button>
-                  </div>
+                  <input
+                    type="email"
+                    placeholder="you@example.com"
+                    disabled={otpSent}
+                    className={`${inputCls(true, !!errors.email)} flex-1 ${otpSent ? 'bg-gray-100 text-gray-500' : ''}`}
+                    {...register('email', {
+                      required: 'Email is required',
+                      pattern: { value: /^\S+@\S+\.\S+$/, message: 'Invalid email' },
+                    })}
+                  />
                 </Field>
 
-                {/* OTP verification */}
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                    OTP Verification
-                    {!otpSent && <span className="ml-2 text-xs text-gray-400">(Send OTP first)</span>}
-                  </label>
-                  <OtpBoxes value={otp} onChange={setOtp} />
-                  {otpSent && (
-                    <p className="mt-1.5 text-xs text-gray-500">
-                      Demo OTP:{' '}
-                      <button
-                        type="button"
-                        className="font-semibold text-prastav-700 underline"
-                        onClick={() => setOtp('123456')}
-                      >
-                        123456
-                      </button>
-                    </p>
-                  )}
-                </div>
+                {/* OTP verification (Only shows after sending OTP) */}
+                {otpSent && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    className="overflow-hidden"
+                  >
+                    <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                      Enter OTP Code
+                      <span className="ml-2 text-xs text-prastav-600 font-semibold">(Sent to your email)</span>
+                    </label>
+                    <OtpBoxes value={otp} onChange={setOtp} />
+                  </motion.div>
+                )}
 
                 {/* Phone */}
                 <Field label="Phone Number" error={errors.phone?.message} icon={HiOutlinePhone}>
@@ -397,12 +350,16 @@ export default function SignupPage() {
                 {/* Submit */}
                 <motion.button
                   type="submit"
-                  disabled={submitting}
+                  disabled={submitting || sendingOtp}
                   whileHover={{ scale: 1.01 }}
                   whileTap={{ scale: 0.99 }}
                   className="w-full rounded-2xl bg-prastav-800 py-3.5 text-sm font-bold text-white shadow-md transition-all hover:bg-prastav-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {submitting ? 'Creating account…' : 'Create Account →'}
+                  {submitting || sendingOtp
+                    ? 'Processing…'
+                    : otpSent
+                    ? 'Verify & Create Account →'
+                    : 'Send OTP'}
                 </motion.button>
               </form>
 

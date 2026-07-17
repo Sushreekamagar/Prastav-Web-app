@@ -7,19 +7,20 @@ export function NotificationProvider({ children }) {
   const [unreadCount, setUnreadCount] = useState(0)
 
   const setNotificationData = useCallback((items) => {
-    setNotifications(items)
-    setUnreadCount(items.filter((n) => !n.read).length)
+    const normalized = items.map((n) => ({ ...n, read: n.read ?? n.isRead ?? false }))
+    setNotifications(normalized)
+    setUnreadCount(normalized.filter((n) => !n.read).length)
   }, [])
 
   const markAsRead = useCallback((id) => {
     setNotifications((prev) =>
-      prev.map((n) => (n._id === id ? { ...n, read: true } : n)),
+      prev.map((n) => (n._id === id ? { ...n, read: true, isRead: true } : n)),
     )
     setUnreadCount((prev) => Math.max(0, prev - 1))
   }, [])
 
   const markAllAsRead = useCallback(() => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true, isRead: true })))
     setUnreadCount(0)
   }, [])
 

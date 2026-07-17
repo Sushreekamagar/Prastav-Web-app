@@ -4,6 +4,7 @@ import { AuthProvider } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { NotificationProvider } from './context/NotificationContext'
 import AppRoutes from './routes/AppRoutes'
+import ErrorBoundary from './components/ui/ErrorBoundary'
 import 'react-toastify/dist/ReactToastify.css'
 
 export default function App() {
@@ -12,7 +13,9 @@ export default function App() {
       <ThemeProvider>
         <AuthProvider>
           <NotificationProvider>
-            <AppRoutes />
+            <ErrorBoundary>
+              <AppRoutes />
+            </ErrorBoundary>
             <ToastContainer
               position="top-right"
               autoClose={4000}

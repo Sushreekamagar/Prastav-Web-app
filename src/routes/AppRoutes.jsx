@@ -29,6 +29,10 @@ import NotificationsPage from '../pages/dashboard/NotificationsPage'
 import ChatPage from '../pages/dashboard/ChatPage'
 import ProfilePage from '../pages/dashboard/ProfilePage'
 import SettingsPage from '../pages/dashboard/SettingsPage'
+import AdminUsersPage from '../pages/dashboard/AdminUsersPage'
+import AdminBooksPage from '../pages/dashboard/AdminBooksPage'
+import AdminLogsPage from '../pages/dashboard/AdminLogsPage'
+import AdminTransactionsPage from '../pages/dashboard/AdminTransactionsPage'
 
 export default function AppRoutes() {
   return (
@@ -70,6 +74,13 @@ export default function AppRoutes() {
             <Route path="dashboard/listings" element={<MyListingsPage />} />
             <Route path="dashboard/listings/new" element={<CreateListingPage />} />
             <Route path="dashboard/listings/edit/:id" element={<CreateListingPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute roles={['admin']} />}>
+            <Route path="dashboard/admin/users" element={<AdminUsersPage />} />
+            <Route path="dashboard/admin/books" element={<AdminBooksPage />} />
+            <Route path="dashboard/admin/transactions" element={<AdminTransactionsPage />} />
+            <Route path="dashboard/admin/logs" element={<AdminLogsPage />} />
           </Route>
         </Route>
       </Route>

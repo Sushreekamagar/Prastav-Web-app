@@ -295,7 +295,7 @@ function SellerPreferences({ prefs, onChange }) {
    MAIN PAGE
 ══════════════════════════════════════════════════════ */
 export default function PreferencePage() {
-  const { user, updateUser } = useAuth()
+  const { user, updateUser, logout } = useAuth()
   const navigate = useNavigate()
 
   const [role, setRole] = useState(user?.role || 'both')
@@ -342,8 +342,14 @@ export default function PreferencePage() {
   return (
     <div className="min-h-screen bg-[#F3FDF5]">
       {/* Top bar */}
-      <div className="mx-auto flex max-w-6xl items-center px-6 py-4">
+      <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
         <div className="text-xl font-bold text-prastav-700">Prastav</div>
+        <button
+          onClick={() => { logout(); navigate('/signup') }}
+          className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600 shadow-sm transition-all hover:border-prastav-300 hover:text-prastav-700"
+        >
+          ← Back to Signup
+        </button>
       </div>
 
       <div className="mx-auto max-w-2xl px-4 py-6">
