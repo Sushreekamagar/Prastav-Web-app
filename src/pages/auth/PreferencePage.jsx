@@ -135,6 +135,11 @@ function BuyerPreferences({ prefs, onChange }) {
     onChange('subjects', cur.includes(val) ? cur.filter(v => v !== val) : [...cur, val])
   }
 
+  const toggleDelivery = (val) => {
+    const cur = prefs.deliveryOptions || []
+    onChange('deliveryOptions', cur.includes(val) ? cur.filter(v => v !== val) : [...cur, val])
+  }
+
   return (
     <div className="mt-8 space-y-6">
       <div className="flex items-center gap-2 text-prastav-700">
@@ -179,6 +184,32 @@ function BuyerPreferences({ prefs, onChange }) {
         />
       </div>
 
+      <div>
+        <label className="text-xs font-bold text-gray-700">Preferred Delivery Mode</label>
+        <div className="mt-3 flex flex-wrap gap-3">
+          {DELIVERY_OPTIONS.map(opt => {
+            const selected = (prefs.deliveryOptions || []).includes(opt.value)
+            return (
+              <label key={opt.value} className={`flex items-center gap-2 rounded-lg px-4 py-2 cursor-pointer transition-colors ${
+                selected ? 'bg-prastav-100' : 'bg-gray-100 hover:bg-gray-200'
+              }`}>
+                <div className={`flex h-4 w-4 items-center justify-center rounded border ${
+                  selected ? 'bg-prastav-600 border-prastav-600' : 'bg-white border-gray-300'
+                }`}>
+                  {selected && (
+                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </div>
+                <input type="checkbox" className="hidden" checked={selected} onChange={() => toggleDelivery(opt.value)} />
+                <span className={`text-xs font-medium ${selected ? 'text-prastav-800' : 'text-gray-600'}`}>{opt.label}</span>
+              </label>
+            )
+          })}
+        </div>
+      </div>
+
     </div>
   )
 }
@@ -188,11 +219,6 @@ function SellerPreferences({ prefs, onChange }) {
   const toggleBookType = (val) => {
     const cur = prefs.bookTypes || []
     onChange('bookTypes', cur.includes(val) ? cur.filter(v => v !== val) : [...cur, val])
-  }
-
-  const toggleDelivery = (val) => {
-    const cur = prefs.deliveryOptions || []
-    onChange('deliveryOptions', cur.includes(val) ? cur.filter(v => v !== val) : [...cur, val])
   }
 
   return (
@@ -260,33 +286,6 @@ function SellerPreferences({ prefs, onChange }) {
           })}
         </div>
       </div>
-
-
-      <div>
-        <label className="text-xs font-bold text-gray-700">Preferred Delivery Mode</label>
-        <div className="mt-3 flex flex-wrap gap-3">
-          {DELIVERY_OPTIONS.map(opt => {
-            const selected = (prefs.deliveryOptions || []).includes(opt.value)
-            return (
-              <label key={opt.value} className={`flex items-center gap-2 rounded-lg px-4 py-2 cursor-pointer transition-colors ${
-                selected ? 'bg-prastav-100' : 'bg-gray-100 hover:bg-gray-200'
-              }`}>
-                <div className={`flex h-4 w-4 items-center justify-center rounded border ${
-                  selected ? 'bg-prastav-600 border-prastav-600' : 'bg-white border-gray-300'
-                }`}>
-                  {selected && (
-                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                </div>
-                <input type="checkbox" className="hidden" checked={selected} onChange={() => toggleDelivery(opt.value)} />
-                <span className={`text-xs font-medium ${selected ? 'text-prastav-800' : 'text-gray-600'}`}>{opt.label}</span>
-              </label>
-            )
-          })}
-        </div>
-      </div>
     </div>
   )
 }
@@ -308,12 +307,12 @@ export default function PreferencePage() {
     condition: 'good',
     budgetMin: 100,
     budgetMax: 2000,
+    deliveryOptions: ['self_pickup'],
   })
 
   const [sellerPrefs, setSellerPrefs] = useState({
     bookTypes: [],
     pricingStrategy: 'fast',
-    deliveryOptions: ['self_pickup'],
   })
 
   const handleBuyerChange = (key, val) => setBuyerPrefs(p => ({ ...p, [key]: val }))
