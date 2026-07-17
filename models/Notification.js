@@ -32,6 +32,7 @@ const notificationSchema = new mongoose.Schema(
         'payment_verified',
         'transaction_completed',
         'request_cancelled',
+        'rating_received',
         'system'
       ],
       required: true,

@@ -68,6 +68,13 @@ const bookSchema = new mongoose.Schema(
     imageUrl: { type: String, default: null },
     price: { type: Number, default: 0, min: 0 },
 
+    // Marketplace listing type — only set for user-created listings, not imported dataset books
+    listingType: {
+      type: String,
+      enum: ['sell', 'donate', 'exchange'],
+      default: null,
+    },
+
     seller: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',

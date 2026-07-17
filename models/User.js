@@ -60,6 +60,30 @@ const userSchema = new mongoose.Schema(
       default: null,
     },
 
+    district: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+
+    // Set to true after the user completes the onboarding preference step
+    preferencesSet: {
+      type: Boolean,
+      default: false,
+    },
+
+    // Buyer preferences (subjects, condition, budget, etc.)
+    preferences: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
+
+    // Seller preferences (book types, pricing strategy, delivery)
+    sellerPreferences: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
+
     // GeoJSON Point — used later for nearby books & Haversine distance
     location: {
       type: {

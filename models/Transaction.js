@@ -19,7 +19,7 @@ const transactionSchema = new mongoose.Schema(
     },
     requestType: {
       type: String,
-      enum: ['Delivery', 'Exchange', 'Donation'],
+      enum: ['Delivery', 'Self-Pickup', 'Exchange', 'Donation'],
       required: true,
     },
  
@@ -49,7 +49,7 @@ const transactionSchema = new mongoose.Schema(
     // ── Payment ──────────────────────────────────────────────────────
     paymentMethod: {
       type: String,
-      enum: ['free', 'esewa', 'khalti'],
+      enum: ['free', 'esewa', 'khalti', 'cod'],
       default: 'free',
     },
     paymentStatus: {
@@ -88,6 +88,11 @@ const transactionSchema = new mongoose.Schema(
     },
  
     completedAt: {
+      type: Date,
+      default: null,
+    },
+
+    acceptedAt: {
       type: Date,
       default: null,
     },
