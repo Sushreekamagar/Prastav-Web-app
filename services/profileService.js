@@ -17,7 +17,7 @@ const getProfile = async (userId) => {
 };
 
 const updateProfile = async (userId, body) => {
-  const { name, grade, role, district, preferencesSet, preferences, sellerPreferences, esewaNumber, khaltiNumber } = body;
+  const { name, grade, role, district, preferencesSet, preferences, sellerPreferences, esewaNumber, khaltiNumber, esewaQR, khaltiQR } = body;
   const updates = {};
 
   if (name !== undefined) updates.name = String(name).trim();
@@ -29,6 +29,8 @@ const updateProfile = async (userId, body) => {
   if (sellerPreferences !== undefined) updates.sellerPreferences = sellerPreferences;
   if (esewaNumber !== undefined) updates.esewaNumber = esewaNumber === null ? null : String(esewaNumber).trim();
   if (khaltiNumber !== undefined) updates.khaltiNumber = khaltiNumber === null ? null : String(khaltiNumber).trim();
+  if (esewaQR !== undefined) updates.esewaQR = esewaQR;
+  if (khaltiQR !== undefined) updates.khaltiQR = khaltiQR;
 
   const user = await User.findByIdAndUpdate(userId, updates, {
     returnDocument: 'after',

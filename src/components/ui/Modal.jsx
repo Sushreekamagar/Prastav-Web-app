@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { HiOutlineX } from 'react-icons/hi'
 
-export default function Modal({ isOpen, onClose, title, children, size = 'md' }) {
+export default function Modal({ isOpen, onClose, title, children, footer, size = 'md' }) {
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden'
@@ -36,9 +36,11 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' })
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            className={`relative w-full rounded-2xl bg-white p-6 shadow-2xl ${sizeClasses[size]}`}
+            className={`relative flex flex-col w-full rounded-2xl bg-white shadow-2xl ${sizeClasses[size]}`}
+            style={{ maxHeight: '90vh' }}
           >
-            <div className="mb-4 flex items-center justify-between">
+            {/* Header — always visible */}
+            <div className="flex flex-shrink-0 items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100">
               {title && <h2 className="text-xl font-bold text-gray-900">{title}</h2>}
               <button
                 type="button"
@@ -49,7 +51,16 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' })
                 <HiOutlineX className="h-5 w-5" />
               </button>
             </div>
-            {children}
+            {/* Scrollable body */}
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              {children}
+            </div>
+            {/* Sticky footer — always visible */}
+            {footer && (
+              <div className="flex flex-shrink-0 items-center justify-end gap-3 border-t border-gray-100 px-6 py-4 bg-white">
+                {footer}
+              </div>
+            )}
           </motion.div>
         </div>
       )}

@@ -112,6 +112,18 @@ export default function ProfilePage() {
     }
   }
 
+  const handleQrDelete = async (type) => {
+    if (!window.confirm(`Are you sure you want to delete your ${type === 'esewa' ? 'eSewa' : 'Khalti'} QR Code?`)) return
+    const fieldKey = type === 'esewa' ? 'esewaQR' : 'khaltiQR'
+    try {
+      const updated = await updateProfile({ [fieldKey]: null })
+      updateUser(updated)
+      toast.success(`${type === 'esewa' ? 'eSewa' : 'Khalti'} QR deleted successfully! 🗑️`)
+    } catch (err) {
+      toast.error(err.message || 'Failed to delete QR')
+    }
+  }
+
   const handleDetectLocation = () => {
     if (!navigator.geolocation) {
       toast.error('Geolocation is not supported by your browser')
@@ -263,11 +275,22 @@ export default function ProfilePage() {
                           {qrUrl && (
                             <img src={qrUrl} alt="eSewa QR" className="h-20 w-full object-contain rounded-lg border border-green-200 bg-white" />
                           )}
-                          <label className="flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-green-300 bg-white py-1.5 text-xs font-semibold text-green-700 hover:bg-green-50 transition-colors">
-                            <HiOutlineUpload className="h-3.5 w-3.5" />
-                            {qrUrl ? 'Replace' : 'Upload'}
-                            <input type="file" accept="image/*" className="hidden" onChange={(e) => handleQrUpload(e, 'esewaQr')} />
-                          </label>
+                          <div className="flex gap-2">
+                            <label className="flex-1 flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-green-300 bg-white py-1.5 text-xs font-semibold text-green-700 hover:bg-green-50 transition-colors">
+                              <HiOutlineUpload className="h-3.5 w-3.5" />
+                              {qrUrl ? 'Replace' : 'Upload'}
+                              <input type="file" accept="image/*" className="hidden" onChange={(e) => handleQrUpload(e, 'esewaQr')} />
+                            </label>
+                            {qrUrl && (
+                              <button
+                                type="button"
+                                onClick={() => handleQrDelete('esewa')}
+                                className="flex items-center justify-center gap-1 rounded-lg bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 px-2.5 py-1.5 text-xs font-semibold transition-colors"
+                              >
+                                🗑️
+                              </button>
+                            )}
+                          </div>
                           <Input label="eSewa Number" size="sm" {...register('esewaNumber')} />
                         </div>
                       )
@@ -288,11 +311,22 @@ export default function ProfilePage() {
                           {qrUrl && (
                             <img src={qrUrl} alt="Khalti QR" className="h-20 w-full object-contain rounded-lg border border-purple-200 bg-white" />
                           )}
-                          <label className="flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-purple-300 bg-white py-1.5 text-xs font-semibold text-purple-700 hover:bg-purple-50 transition-colors">
-                            <HiOutlineUpload className="h-3.5 w-3.5" />
-                            {qrUrl ? 'Replace' : 'Upload'}
-                            <input type="file" accept="image/*" className="hidden" onChange={(e) => handleQrUpload(e, 'khaltiQr')} />
-                          </label>
+                          <div className="flex gap-2">
+                            <label className="flex-1 flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-purple-300 bg-white py-1.5 text-xs font-semibold text-purple-700 hover:bg-purple-50 transition-colors">
+                              <HiOutlineUpload className="h-3.5 w-3.5" />
+                              {qrUrl ? 'Replace' : 'Upload'}
+                              <input type="file" accept="image/*" className="hidden" onChange={(e) => handleQrUpload(e, 'khaltiQr')} />
+                            </label>
+                            {qrUrl && (
+                              <button
+                                type="button"
+                                onClick={() => handleQrDelete('khalti')}
+                                className="flex items-center justify-center gap-1 rounded-lg bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 px-2.5 py-1.5 text-xs font-semibold transition-colors"
+                              >
+                                🗑️
+                              </button>
+                            )}
+                          </div>
                           <Input label="Khalti Number" size="sm" {...register('khaltiNumber')} />
                         </div>
                       )

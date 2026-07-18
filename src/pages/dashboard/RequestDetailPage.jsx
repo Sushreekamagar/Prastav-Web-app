@@ -591,7 +591,19 @@ export default function RequestDetailPage({ mode = 'request' }) {
         </div>
       </PageTransition>
 
-      <Modal isOpen={paymentOpen} onClose={() => setPaymentOpen(false)} title="Upload Payment Proof">
+      <Modal
+        isOpen={paymentOpen}
+        onClose={() => setPaymentOpen(false)}
+        title="Upload Payment Proof"
+        footer={
+          <>
+            <Button variant="outline" size="sm" onClick={() => setPaymentOpen(false)}>Cancel</Button>
+            <Button size="sm" onClick={handlePaymentUpload} disabled={submitting || !paymentFile}>
+              {submitting ? 'Submitting...' : '✓ Submit Payment Proof'}
+            </Button>
+          </>
+        }
+      >
         <div className="space-y-4">
           <div className="rounded-xl bg-prastav-50 p-4 flex items-center justify-between">
             <div>
@@ -635,17 +647,18 @@ export default function RequestDetailPage({ mode = 'request' }) {
               <span className="text-[10px] text-gray-400 mt-1">Camera or Gallery • PNG, JPG, JPEG</span>
             </div>
             {paymentFile && (
-              <div className="mt-3 flex items-center justify-center border border-gray-200 rounded-xl p-2 bg-white max-h-48 overflow-hidden">
-                <img src={URL.createObjectURL(paymentFile)} alt="Payment Preview" className="max-h-40 rounded-lg object-contain" />
+              <div className="mt-3 relative border border-gray-200 rounded-xl p-2 bg-white overflow-hidden">
+                <img src={URL.createObjectURL(paymentFile)} alt="Payment Preview" className="w-full max-h-52 rounded-lg object-contain" />
+                <button
+                  type="button"
+                  onClick={() => setPaymentFile(null)}
+                  className="absolute top-3 right-3 flex items-center gap-1 rounded-full bg-red-500 px-2.5 py-1 text-xs font-semibold text-white shadow-md hover:bg-red-600 transition-colors"
+                >
+                  <HiOutlineX className="h-3.5 w-3.5" />
+                  Remove
+                </button>
               </div>
             )}
-          </div>
-
-          <div className="mt-4 flex justify-end gap-3">
-            <Button variant="outline" size="sm" onClick={() => setPaymentOpen(false)}>Cancel</Button>
-            <Button size="sm" onClick={handlePaymentUpload} disabled={submitting || !paymentFile}>
-              {submitting ? 'Submitting...' : 'Submit Payment Proof'}
-            </Button>
           </div>
         </div>
       </Modal>

@@ -12,6 +12,7 @@ import {
   HiOutlineExclamationCircle,
   HiOutlineCheckCircle as HiCheck,
   HiOutlinePhotograph,
+  HiOutlineTrash,
 } from 'react-icons/hi'
 import { DashboardPage } from '../../layouts/DashboardLayout'
 import Input from '../../components/ui/Input'
@@ -22,9 +23,10 @@ import { useAuth } from '../../context/AuthContext'
 import { changePassword, switchRole, uploadPaymentQr, updateProfile } from '../../services/authService'
 
 /* ─── QR Upload Card ───────────────────────────────────────────────── */
-function QrUploadCard({ type, label, color, currentQr, currentNumber, numberLabel, onUpload, onNumberSave }) {
+function QrUploadCard({ type, label, color, currentQr, currentNumber, numberLabel, onUpload, onNumberSave, onDelete }) {
   const inputRef = useRef(null)
   const [uploading, setUploading] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [preview, setPreview] = useState(null)
   const [number, setNumber] = useState(currentNumber || '')
   const [savingNumber, setSavingNumber] = useState(false)
@@ -48,6 +50,20 @@ function QrUploadCard({ type, label, color, currentQr, currentNumber, numberLabe
       setPreview(null)
     } finally {
       setUploading(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (window.confirm(`Are you sure you want to delete your ${label} QR Code?`)) {
+      setDeleting(true)
+      try {
+        await onDelete()
+        setPreview(null)
+      } catch (err) {
+        // Handled by caller
+      } finally {
+        setDeleting(false)
+      }
     }
   }
 
@@ -142,16 +158,31 @@ function QrUploadCard({ type, label, color, currentQr, currentNumber, numberLabe
       </div>
       <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
 
-      {/* Upload Button */}
-      <button
-        type="button"
-        onClick={() => inputRef.current?.click()}
-        disabled={uploading}
-        className={`flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold text-white transition-all disabled:opacity-60 ${colors.btn}`}
-      >
-        <HiOutlineUpload className="h-4 w-4" />
-        {uploading ? 'Uploading...' : imageUrl ? `Replace ${label} QR` : `Upload ${label} QR`}
-      </button>
+      {/* Upload & Delete Buttons */}
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          disabled={uploading || deleting}
+          className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold text-white transition-all disabled:opacity-60 ${colors.btn}`}
+        >
+          <HiOutlineUpload className="h-4 w-4" />
+          {uploading ? 'Uploading...' : imageUrl ? 'Replace QR' : `Upload ${label} QR`}
+        </button>
+
+        {currentQr && (
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={uploading || deleting}
+            className="flex items-center justify-center gap-1.5 rounded-xl bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 px-3.5 py-2.5 transition-all font-semibold text-sm disabled:opacity-60"
+            title={`Delete ${label} QR`}
+          >
+            <HiOutlineTrash className="h-4 w-4" />
+            Delete
+          </button>
+        )}
+      </div>
 
       {/* Account Number */}
       <div className="space-y-2">
@@ -254,6 +285,18 @@ export default function SettingsPage() {
     }
   }
 
+  const handleQrDelete = async (type) => {
+    const fieldKey = type === 'esewa' ? 'esewaQR' : 'khaltiQR'
+    try {
+      const updated = await updateProfile({ [fieldKey]: null })
+      updateUser(updated)
+      toast.success(`${type === 'esewa' ? 'eSewa' : 'Khalti'} QR deleted successfully! 🗑️`)
+    } catch (err) {
+      toast.error(err.message || 'Failed to delete QR')
+      throw err
+    }
+  }
+
   const handleNumberSave = async (field, value) => {
     try {
       const updated = await updateProfile({ [field]: value })
@@ -352,6 +395,7 @@ export default function SettingsPage() {
                   numberLabel="eSewa Registered Number"
                   onUpload={(file) => handleQrUpload(file, 'esewa')}
                   onNumberSave={(val) => handleNumberSave('esewaNumber', val)}
+                  onDelete={() => handleQrDelete('esewa')}
                 />
                 <QrUploadCard
                   type="khalti"
@@ -362,6 +406,7 @@ export default function SettingsPage() {
                   numberLabel="Khalti Registered Number"
                   onUpload={(file) => handleQrUpload(file, 'khalti')}
                   onNumberSave={(val) => handleNumberSave('khaltiNumber', val)}
+                  onDelete={() => handleQrDelete('khalti')}
                 />
               </div>
 
