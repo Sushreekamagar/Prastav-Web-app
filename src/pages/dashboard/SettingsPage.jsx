@@ -563,6 +563,12 @@ export default function SettingsPage() {
                 {...register('newPassword', {
                   required: 'Required',
                   minLength: { value: 6, message: 'At least 6 characters' },
+                  validate: {
+                    hasUppercase: (val) => /[A-Z]/.test(val) || 'Must contain at least one uppercase letter',
+                    hasLowercase: (val) => /[a-z]/.test(val) || 'Must contain at least one lowercase letter',
+                    hasNumber: (val) => /\d/.test(val) || 'Must contain at least one number',
+                    hasSpecial: (val) => /[^a-zA-Z\d\s]/.test(val) || 'Must contain at least one special character/symbol',
+                  }
                 })}
               />
               <Input

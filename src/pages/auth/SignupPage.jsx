@@ -311,9 +311,31 @@ export default function SignupPage() {
                       {...register('password', {
                         required: 'Password is required',
                         minLength: { value: 6, message: 'At least 6 characters' },
+                        validate: {
+                          hasUppercase: (val) => /[A-Z]/.test(val) || 'Must contain at least one uppercase letter',
+                          hasLowercase: (val) => /[a-z]/.test(val) || 'Must contain at least one lowercase letter',
+                          hasNumber: (val) => /\d/.test(val) || 'Must contain at least one number',
+                          hasSpecial: (val) => /[^a-zA-Z\d\s]/.test(val) || 'Must contain at least one special character/symbol',
+                        }
                       })}
                     />
                   </Field>
+
+                  {/* Password hint */}
+                  {watch('password') && (
+                    <div className="col-span-2 grid grid-cols-2 gap-x-4 gap-y-0.5 rounded-lg bg-gray-50 px-3 py-2 text-[11px]">
+                      {[
+                        { label: 'Uppercase letter (A–Z)', ok: /[A-Z]/.test(watch('password')) },
+                        { label: 'Lowercase letter (a–z)', ok: /[a-z]/.test(watch('password')) },
+                        { label: 'Number (0–9)',           ok: /\d/.test(watch('password')) },
+                        { label: 'Special character (!@#…)',ok: /[^a-zA-Z\d\s]/.test(watch('password')) },
+                      ].map(({ label, ok }) => (
+                        <span key={label} className={`flex items-center gap-1 ${ok ? 'text-green-600' : 'text-gray-400'}`}>
+                          <span>{ok ? '✓' : '○'}</span> {label}
+                        </span>
+                      ))}
+                    </div>
+                  )}
 
                   <Field label="Confirm Password" error={errors.confirmPassword?.message} icon={HiOutlineLockClosed}>
                     <input

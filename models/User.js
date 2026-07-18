@@ -28,7 +28,15 @@ const userSchema = new mongoose.Schema(
     password: {
       type: String,
       required: [true, 'Password is required'],
-      minlength: 6,
+      minlength: [6, 'Password must be at least 6 characters long'],
+      validate: {
+        validator: function (v) {
+          // Skip validation if the password is already hashed (bcrypt hashes start with $2a$ or $2b$ and are 60 characters)
+          if (/^\$2[ayb]\$.{56}$/.test(v)) return true;
+          return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z\d\s])/.test(v);
+        },
+        message: 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character.',
+      },
       select: false,
     },
 
