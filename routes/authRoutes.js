@@ -49,7 +49,10 @@ router.post('/resend-otp', async (req, res) => {
     const otp = generateOTP();
     user.otp = otp;
     user.otpExpiry = new Date(Date.now() + OTP_EXPIRY_MS);
-    await user.save();
+    // Reset OTP lockout so fresh 5-attempt window starts
+    user.otpAttempts = 0;
+    user.otpLockUntil = null;
+    await user.save({ validateBeforeSave: false });
     await sendOTPEmail(user.email, otp);
 
     res.status(200).json({ success: true, message: 'OTP resent successfully. Check your email.' });

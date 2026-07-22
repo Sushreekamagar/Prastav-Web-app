@@ -155,6 +155,19 @@ const userSchema = new mongoose.Schema(
       select: false,
     },
 
+    // OTP brute-force protection (separate from login lockout)
+    otpAttempts: {
+      type: Number,
+      default: 0,
+      select: false,
+    },
+
+    otpLockUntil: {
+      type: Date,
+      default: null,
+      select: false,
+    },
+
     // Brute-force login protection
     loginAttempts: {
       type: Number,

@@ -7,12 +7,13 @@ import {
   HiOutlineTag,
   HiOutlineLightningBolt,
   HiScale,
+  HiOutlineLocationMarker,
 } from 'react-icons/hi'
 import Button from '../../components/ui/Button'
 import Select from '../../components/ui/Select'
 import { useAuth } from '../../context/AuthContext'
-import { updateProfile } from '../../services/authService'
-import { GRADES } from '../../utils/bookConstants'
+import { updateProfile, updateLocation } from '../../services/authService'
+import { GRADES, NEPAL_DISTRICTS } from '../../utils/bookConstants'
 
 /* ─── constants ─────────────────────────────────────── */
 const SUBJECT_OPTIONS = [
@@ -215,7 +216,18 @@ function BuyerPreferences({ prefs, onChange }) {
 }
 
 /* ─── Seller Preferences ────────────────────────────── */
-function SellerPreferences({ prefs, onChange }) {
+function SellerPreferences({
+  prefs,
+  onChange,
+  district,
+  setDistrict,
+  latitude,
+  setLatitude,
+  longitude,
+  setLongitude,
+  geoLoading,
+  handleDetectLocation,
+}) {
   const toggleBookType = (val) => {
     const cur = prefs.bookTypes || []
     onChange('bookTypes', cur.includes(val) ? cur.filter(v => v !== val) : [...cur, val])
@@ -286,6 +298,59 @@ function SellerPreferences({ prefs, onChange }) {
           })}
         </div>
       </div>
+
+      {/* Location Section */}
+      <div className="border-t border-gray-100 pt-6 space-y-4">
+        <div className="flex items-center gap-2 text-prastav-700">
+          <HiOutlineLocationMarker className="h-5 w-5" />
+          <h4 className="font-bold text-sm">Seller Location (for distance calculation)</h4>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label className="text-xs font-bold text-gray-700">Select District</label>
+            <div className="mt-2">
+              <Select
+                options={NEPAL_DISTRICTS.map((d) => ({ value: d, label: d }))}
+                value={district}
+                onChange={(e) => setDistrict(e.target.value)}
+                className="bg-white border-gray-200"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-gray-700">GPS Coordinates</label>
+            <div className="mt-2 flex flex-col gap-2">
+              <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600 font-mono">
+                {latitude && longitude && (latitude !== 0 || longitude !== 0) ? (
+                  <span>Lat: {latitude.toFixed(5)}, Lng: {longitude.toFixed(5)}</span>
+                ) : (
+                  <span className="text-gray-400 italic">No GPS coordinates set yet</span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={handleDetectLocation}
+                disabled={geoLoading}
+                className="flex items-center justify-center gap-1.5 rounded-lg border border-prastav-200 bg-prastav-50 px-3 py-1.5 text-xs font-semibold text-prastav-700 hover:bg-prastav-100 transition-colors disabled:opacity-50"
+              >
+                {geoLoading ? (
+                  <>
+                    <svg className="animate-spin h-3.5 w-3.5 text-prastav-700" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    Detecting...
+                  </>
+                ) : (
+                  <>🎯 Detect Current Location</>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
@@ -299,6 +364,10 @@ export default function PreferencePage() {
 
   const [role, setRole] = useState(user?.role || 'both')
   const [loading, setLoading] = useState(false)
+  const [district, setDistrict] = useState(user?.district || 'Kathmandu')
+  const [latitude, setLatitude] = useState(user?.location?.coordinates?.[1] || 0)
+  const [longitude, setLongitude] = useState(user?.location?.coordinates?.[0] || 0)
+  const [geoLoading, setGeoLoading] = useState(false)
 
   const [buyerPrefs, setBuyerPrefs] = useState({
     grade: user?.grade || '1-5',
@@ -318,17 +387,64 @@ export default function PreferencePage() {
   const handleBuyerChange = (key, val) => setBuyerPrefs(p => ({ ...p, [key]: val }))
   const handleSellerChange = (key, val) => setSellerPrefs(p => ({ ...p, [key]: val }))
 
+  const handleDetectLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error('Geolocation is not supported by your browser')
+      return
+    }
+    setGeoLoading(true)
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLatitude(position.coords.latitude)
+        setLongitude(position.coords.longitude)
+        toast.success('GPS coordinates detected! 📍')
+        setGeoLoading(false)
+      },
+      (err) => {
+        toast.error(`Error finding location: ${err.message}. Please allow location access.`)
+        setGeoLoading(false)
+      }
+    )
+  }
+
+  const handleBackToDashboard = async () => {
+    if (!user?.preferencesSet) {
+      setLoading(true)
+      try {
+        const payload = {
+          role: user?.role || 'both',
+          district: user?.district || 'Kathmandu',
+          preferencesSet: true,
+        }
+        const updated = await updateProfile(payload)
+        updateUser(updated)
+      } catch (err) {
+        // ignore
+      } finally {
+        setLoading(false)
+      }
+    }
+    navigate('/dashboard')
+  }
+
   const handleSubmit = async () => {
     setLoading(true)
     try {
       const payload = {
         role,
+        district,
         ...(role !== 'seller' ? { preferences: buyerPrefs } : {}),
         ...(role !== 'buyer' ? { sellerPreferences: sellerPrefs } : {}),
         preferencesSet: true,
       }
       const updated = await updateProfile(payload)
-      updateUser(updated)
+      
+      let finalUser = updated
+      if (latitude !== 0 || longitude !== 0) {
+        finalUser = await updateLocation({ latitude, longitude })
+      }
+      
+      updateUser(finalUser)
       toast.success('Preferences saved! 🎉')
       navigate('/dashboard')
     } catch (err) {
@@ -343,21 +459,22 @@ export default function PreferencePage() {
       {/* Top bar */}
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
         <div className="text-xl font-bold text-prastav-700">Prastav</div>
-        {user?.preferencesSet ? (
+        <div className="flex gap-2">
           <button
-            onClick={() => navigate('/dashboard')}
+            onClick={handleBackToDashboard}
             className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600 shadow-sm transition-all hover:border-prastav-300 hover:text-prastav-700"
           >
             ← Back to Dashboard
           </button>
-        ) : (
-          <button
-            onClick={() => { logout(); navigate('/signup') }}
-            className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600 shadow-sm transition-all hover:border-prastav-300 hover:text-prastav-700"
-          >
-            ← Back to Signup
-          </button>
-        )}
+          {!user?.preferencesSet && (
+            <button
+              onClick={() => { logout(); navigate('/signup') }}
+              className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600 shadow-sm transition-all hover:border-prastav-300 hover:text-prastav-700"
+            >
+              ← Back to Signup
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="mx-auto max-w-2xl px-4 py-6">
@@ -394,7 +511,18 @@ export default function PreferencePage() {
 
             {(role === 'seller' || role === 'both') && (
               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
-                <SellerPreferences prefs={sellerPrefs} onChange={handleSellerChange} />
+                <SellerPreferences
+                  prefs={sellerPrefs}
+                  onChange={handleSellerChange}
+                  district={district}
+                  setDistrict={setDistrict}
+                  latitude={latitude}
+                  setLatitude={setLatitude}
+                  longitude={longitude}
+                  setLongitude={setLongitude}
+                  geoLoading={geoLoading}
+                  handleDetectLocation={handleDetectLocation}
+                />
               </motion.div>
             )}
           </AnimatePresence>

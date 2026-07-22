@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import Button from '../../components/ui/Button'
@@ -11,6 +11,12 @@ export default function VerifyOtpPage() {
   const [loading, setLoading] = useState(false)
   const [resending, setResending] = useState(false)
   const [countdown, setCountdown] = useState(60)
+
+  // OTP lockout state
+  const [otpLocked, setOtpLocked] = useState(false)
+  const [otpLockCountdown, setOtpLockCountdown] = useState(0)
+  const lockIntervalRef = useRef(null)
+
   const { login } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -26,8 +32,27 @@ export default function VerifyOtpPage() {
     return () => clearTimeout(timer)
   }, [countdown])
 
+  // Clean up lock interval on unmount
+  useEffect(() => () => { if (lockIntervalRef.current) clearInterval(lockIntervalRef.current) }, [])
+
+  const startLockCountdown = () => {
+    setOtpLocked(true)
+    let secs = 120
+    setOtpLockCountdown(secs)
+    lockIntervalRef.current = setInterval(() => {
+      secs -= 1
+      setOtpLockCountdown(secs)
+      if (secs <= 0) {
+        clearInterval(lockIntervalRef.current)
+        setOtpLocked(false)
+        setOtpLockCountdown(0)
+      }
+    }, 1000)
+  }
+
   const handleVerify = async (e) => {
     e.preventDefault()
+    if (otpLocked) return
     if (otp.length !== 6) {
       toast.error('Please enter a 6-digit OTP')
       return
@@ -40,7 +65,11 @@ export default function VerifyOtpPage() {
       toast.success('Email verified successfully!')
       navigate('/dashboard/preferences', { replace: true })
     } catch (err) {
-      toast.error(err.message || 'Invalid OTP. Please try again.')
+      const msg = err.response?.data?.message || err.message || 'Invalid OTP. Please try again.'
+      toast.error(msg)
+      if (err.response?.status === 429) {
+        startLockCountdown()
+      }
     } finally {
       setLoading(false)
     }
@@ -52,6 +81,10 @@ export default function VerifyOtpPage() {
       await resendOtp(email)
       toast.success('OTP resent!')
       setCountdown(60)
+      // Resend clears the lockout on server too — unlock client
+      if (lockIntervalRef.current) clearInterval(lockIntervalRef.current)
+      setOtpLocked(false)
+      setOtpLockCountdown(0)
     } catch (err) {
       toast.error(err.message || 'Failed to resend OTP.')
     } finally {
@@ -66,18 +99,34 @@ export default function VerifyOtpPage() {
         We sent a 6-digit code to <strong>{email}</strong>
       </p>
 
+      {/* Lockout Banner */}
+      {otpLocked && (
+        <div className="mt-4 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <span>🔒</span>
+          <span>
+            Too many incorrect attempts. Try again in{' '}
+            <strong>{otpLockCountdown}s</strong> or resend OTP to reset.
+          </span>
+        </div>
+      )}
+
       <form onSubmit={handleVerify} className="mt-6 space-y-4">
         <Input
           label="OTP Code"
           placeholder="123456"
           maxLength={6}
           value={otp}
-          onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-          hint="Demo OTP: 123456"
+          onChange={(e) => !otpLocked && setOtp(e.target.value.replace(/\D/g, ''))}
+          disabled={otpLocked}
+          hint="Check your email for the 6-digit code"
         />
 
-        <Button type="submit" className="w-full" disabled={loading}>
-          {loading ? 'Verifying...' : 'Verify Email'}
+        <Button type="submit" className="w-full" disabled={loading || otpLocked}>
+          {loading
+            ? 'Verifying...'
+            : otpLocked
+            ? `Locked — wait ${otpLockCountdown}s`
+            : 'Verify Email'}
         </Button>
       </form>
 

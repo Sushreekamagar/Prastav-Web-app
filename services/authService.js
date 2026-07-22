@@ -87,10 +87,11 @@ const signup = async (body) => {
 
 /**
  * verifyOtp — Validate OTP and activate the user account.
+ * OTP Lockout: 5 wrong attempts → 2-minute lock (independent of login lockout).
  */
 const verifyOtp = async (body) => {
   const { userId, otp } = body || {};
-  const user = await User.findById(userId).select('+otp +otpExpiry');
+  const user = await User.findById(userId).select('+otp +otpExpiry +otpAttempts +otpLockUntil');
 
   if (!user) {
     throw new AppError('User not found.', 404);
@@ -100,10 +101,17 @@ const verifyOtp = async (body) => {
     throw new AppError('Account is already verified. Please login.', 400);
   }
 
-  if (user.otp !== String(otp)) {
-    throw new AppError('Invalid OTP. Please try again.', 400);
+  // ── OTP Lockout Check ────────────────────────────────────────────────────
+  if (user.otpLockUntil && user.otpLockUntil > Date.now()) {
+    const secsLeft = Math.ceil((user.otpLockUntil - Date.now()) / 1000);
+    const minsLeft = Math.ceil(secsLeft / 60);
+    throw new AppError(
+      `Too many incorrect OTP attempts. Please try again after ${minsLeft} minute(s).`,
+      429
+    );
   }
 
+  // ── OTP Expiry Check ─────────────────────────────────────────────────────
   if (new Date() > user.otpExpiry) {
     throw new AppError(
       'OTP has expired. Please signup again to receive a new OTP.',
@@ -111,9 +119,38 @@ const verifyOtp = async (body) => {
     );
   }
 
+  // ── Wrong OTP — increment attempt counter ────────────────────────────────
+  if (user.otp !== String(otp)) {
+    user.otpAttempts = (user.otpAttempts || 0) + 1;
+
+    const MAX_OTP_ATTEMPTS = 5;
+    const OTP_LOCK_MS = 2 * 60 * 1000; // 2 minutes
+
+    if (user.otpAttempts >= MAX_OTP_ATTEMPTS) {
+      user.otpLockUntil = new Date(Date.now() + OTP_LOCK_MS);
+      user.otpAttempts = 0; // reset counter so lock is the signal
+      await user.save({ validateBeforeSave: false });
+      throw new AppError(
+        'Too many incorrect OTP attempts. Please try again after 2 minutes.',
+        429
+      );
+    }
+
+    await user.save({ validateBeforeSave: false });
+
+    const remaining = MAX_OTP_ATTEMPTS - user.otpAttempts;
+    throw new AppError(
+      `Invalid OTP. ${remaining} attempt(s) remaining before temporary lockout.`,
+      400
+    );
+  }
+
+  // ── Correct OTP — clear all OTP-related fields ───────────────────────────
   user.isVerified = true;
   user.otp = undefined;
   user.otpExpiry = undefined;
+  user.otpAttempts = 0;
+  user.otpLockUntil = null;
   await user.save();
 
   const token = signToken(user._id);
@@ -124,6 +161,7 @@ const verifyOtp = async (body) => {
     user: formatSafeUser(user),
   };
 };
+
 
 /**
  * login — Authenticate user with email/password and return JWT.

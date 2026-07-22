@@ -36,11 +36,12 @@ const inputCls = (hasIcon = false, hasError = false) =>
   } ${hasError ? 'border-red-400' : 'border-gray-200'}`
 
 /* ── 6-box OTP input ────────────────────────────────── */
-function OtpBoxes({ value, onChange }) {
+function OtpBoxes({ value, onChange, disabled = false }) {
   const refs = useRef([])
   const digits = value.split('')
 
   const handleKey = (idx, e) => {
+    if (disabled) return
     if (e.key === 'Backspace') {
       const next = digits.slice()
       if (next[idx]) {
@@ -57,6 +58,7 @@ function OtpBoxes({ value, onChange }) {
   }
 
   const handleChange = (idx, e) => {
+    if (disabled) return
     const char = e.target.value.replace(/\D/g, '').slice(-1)
     const next = digits.slice()
     next[idx] = char
@@ -65,6 +67,7 @@ function OtpBoxes({ value, onChange }) {
   }
 
   const handlePaste = (e) => {
+    if (disabled) return
     const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6)
     onChange(pasted.padEnd(6, '').slice(0, 6))
     refs.current[Math.min(pasted.length, 5)]?.focus()
@@ -84,8 +87,11 @@ function OtpBoxes({ value, onChange }) {
           onChange={(e) => handleChange(i, e)}
           onKeyDown={(e) => handleKey(i, e)}
           onPaste={handlePaste}
+          disabled={disabled}
           className={`h-11 w-full rounded-xl border text-center text-base font-bold transition-all focus:outline-none focus:ring-2 focus:ring-prastav-500/30 ${
-            digits[i]
+            disabled
+              ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
+              : digits[i]
               ? 'border-prastav-600 bg-prastav-50 text-prastav-800'
               : 'border-gray-200 bg-white text-gray-900'
           }`}
@@ -167,6 +173,8 @@ export default function SignupPage() {
   const [agreed, setAgreed] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [userId, setUserId] = useState(null)
+  const [otpLocked, setOtpLocked] = useState(false)
+  const [otpLockCountdown, setOtpLockCountdown] = useState(0)
 
   const emailValue = watch('email', '')
 
@@ -211,7 +219,24 @@ export default function SignupPage() {
         toast.success('Account created! Let\'s set your preferences 🎉')
         navigate('/dashboard/preferences', { replace: true })
       } catch (err) {
-        toast.error(err.response?.data?.message || err.message || 'Registration failed. Please try again.')
+        const msg = err.response?.data?.message || err.message || 'Registration failed. Please try again.'
+        toast.error(msg)
+        // Handle OTP lockout (429)
+        if (err.response?.status === 429) {
+          setOtpLocked(true)
+          // Start 2-minute countdown
+          let secs = 120
+          setOtpLockCountdown(secs)
+          const interval = setInterval(() => {
+            secs -= 1
+            setOtpLockCountdown(secs)
+            if (secs <= 0) {
+              clearInterval(interval)
+              setOtpLocked(false)
+              setOtpLockCountdown(0)
+            }
+          }, 1000)
+        }
       } finally {
         setSubmitting(false)
       }
@@ -284,7 +309,19 @@ export default function SignupPage() {
                       Enter OTP Code
                       <span className="ml-2 text-xs text-prastav-600 font-semibold">(Sent to your email)</span>
                     </label>
-                    <OtpBoxes value={otp} onChange={setOtp} />
+
+                    {/* Lockout warning banner */}
+                    {otpLocked && (
+                      <div className="mb-3 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                        <span>🔒</span>
+                        <span>
+                          Too many incorrect attempts. Try again in{' '}
+                          <strong>{otpLockCountdown}s</strong>.
+                        </span>
+                      </div>
+                    )}
+
+                    <OtpBoxes value={otp} onChange={setOtp} disabled={otpLocked} />
                   </motion.div>
                 )}
 
@@ -372,13 +409,15 @@ export default function SignupPage() {
                 {/* Submit */}
                 <motion.button
                   type="submit"
-                  disabled={submitting || sendingOtp}
+                  disabled={submitting || sendingOtp || otpLocked}
                   whileHover={{ scale: 1.01 }}
                   whileTap={{ scale: 0.99 }}
                   className="w-full rounded-2xl bg-prastav-800 py-3.5 text-sm font-bold text-white shadow-md transition-all hover:bg-prastav-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {submitting || sendingOtp
                     ? 'Processing…'
+                    : otpLocked
+                    ? `Locked — wait ${otpLockCountdown}s`
                     : otpSent
                     ? 'Verify & Create Account →'
                     : 'Send OTP'}
