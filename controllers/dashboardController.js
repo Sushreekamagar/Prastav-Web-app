@@ -33,9 +33,19 @@ const getBuyerDashboard = async (req, res) => {
           },
         },
       };
+      const countFilter = {
+        isAvailable: { $ne: false },
+        isReported: { $ne: true },
+        isDeleted: { $ne: true },
+        location: {
+          $geoWithin: {
+            $centerSphere: [[coords[0], coords[1]], 5 / 6378.1],
+          },
+        },
+      };
       const [nearbyBooks, nbCount] = await Promise.all([
         Book.find(nearbyFilter).select('title author genre Grade imageUrl price').limit(5).lean(),
-        Book.countDocuments(nearbyFilter),
+        Book.countDocuments(countFilter),
       ]);
       nearbyBooksCount = nbCount;
       recentNearbyBooks = nearbyBooks;

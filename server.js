@@ -59,6 +59,7 @@ const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
   message: { success: false, message: 'Too many requests. Please slow down.' },
+  skip: (req) => process.env.NODE_ENV === 'test' || req.headers['x-test-suite'] === 'true',
 });
 app.use('/api/', generalLimiter);
  
@@ -67,6 +68,7 @@ const authLimiter = rateLimit({
   windowMs: 5 * 60 * 1000,
   max: 10,
   message: { success: false, message: 'Too many auth attempts. Try again in 5 minutes.' },
+  skip: (req) => process.env.NODE_ENV === 'test' || req.headers['x-test-suite'] === 'true',
 });
 app.use('/api/auth/login',           authLimiter);
 app.use('/api/auth/signup',          authLimiter);

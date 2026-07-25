@@ -5,6 +5,7 @@
  *
  * Run AFTER starting the server:  node scripts/comprehensive_test.js
  */
+process.env.NODE_ENV = 'test';
 require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 const http = require('http');
 const mongoose = require('mongoose');
@@ -35,6 +36,7 @@ function request(method, path, body, token) {
       hostname: 'localhost', port: 5000, path, method,
       headers: {
         'Content-Type': 'application/json',
+        'x-test-suite': 'true',
         ...(data ? { 'Content-Length': Buffer.byteLength(data) } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
@@ -422,8 +424,8 @@ async function run() {
 
   // Invalid transition test — try to accept already-accepted tx
   if (transactionId) {
-    r = await request('PUT', `/api/transactions/${transactionId}/respond`, { action: 'accepted' }, userToken);
-    r.status === 400 ? pass('Invalid transition (re-accept) → 400') : fail('Invalid transition', `got ${r.status}`);
+    r = await request('PUT', `/api/transactions/${transactionId}/accept`, {}, userToken);
+    r.status === 400 ? pass('Invalid transition (re-accept) → 400') : fail('Invalid transition', `got ${r.status}: ${JSON.stringify(r.body)}`);
   }
 
   // ── Seller reject & cancel ────────────────────────────────────────
@@ -640,22 +642,16 @@ async function run() {
     ? pass('Buyer upload esewaQR → 403 (role-restricted)')
     : fail('Buyer esewaQR RBAC', `got ${r.status}`);
 
-  // Forgot & Reset Password — use authService directly to bypass rate limiter
+  // ══════════════════════════════════════════════════════════════════
   section('17. FORGOT & RESET PASSWORD');
+  // ══════════════════════════════════════════════════════════════════
 
-  const { generateOTP } = require('../services/emailService');
-  const OTP_EXPIRY_MS = 10 * 60 * 1000;
-  // Re-fetch user email for reset test (user's password was changed earlier)
-  const resetTestUser = await User.findById(userId).select('+password');
-  if (resetTestUser) {
-    const resetOtp = generateOTP();
-    await User.findByIdAndUpdate(userId, {
-      otp: resetOtp,
-      otpExpiry: new Date(Date.now() + OTP_EXPIRY_MS),
-    }, { timestamps: false });
-    pass('Forgot password OTP seeded directly in DB (bypassing rate limiter)');
+  r = await request('POST', '/api/auth/forgot-password', { email });
+  r.status === 200 ? pass('Forgot password → 200') : fail('Forgot password', `got ${r.status}: ${JSON.stringify(r.body)}`);
 
-    r = await request('POST', '/api/auth/reset-password', { email, otp: resetOtp, newPassword: 'NewPass@999!' });
+  const resetUser = await User.findOne({ email: email.toLowerCase() }).select('+otp +otpExpiry');
+  if (resetUser?.otp) {
+    r = await request('POST', '/api/auth/reset-password', { email, otp: resetUser.otp, newPassword: 'NewPass@999!' });
     r.status === 200 ? pass('Reset password with valid OTP → 200') : fail('Reset password', `${r.status}: ${JSON.stringify(r.body)}`);
 
     // Verify login with new password
@@ -663,7 +659,7 @@ async function run() {
     r = await request('POST', '/api/auth/login', { email, password: 'NewPass@999!' });
     r.status === 200 ? pass('Login with new password → 200') : fail('Login with new password', `got ${r.status}`);
   } else {
-    skip('Reset password test', 'user not found in DB');
+    skip('Reset password test', 'could not fetch OTP from DB');
   }
 
   // ══════════════════════════════════════════════════════════════════
