@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120" fill="none">
+  <!-- Book left page -->
+  <path d="M60 22 C60 22 38 18 22 26 L22 72 C38 64 60 68 60 68 Z" fill="#1a6b3a" opacity="0.95"/>
+  <!-- Book right page -->
+  <path d="M60 22 C60 22 82 18 98 26 L98 72 C82 64 60 68 60 68 Z" fill="#1a6b3a" opacity="0.85"/>
+  <!-- Book spine highlight -->
+  <path d="M60 22 L60 68" stroke="white" stroke-width="2" stroke-linecap="round"/>
+  <!-- Book top left curve -->
+  <path d="M22 26 C30 18 46 14 60 22" stroke="white" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+  <!-- Book top right curve -->
+  <path d="M98 26 C90 18 74 14 60 22" stroke="white" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+  <!-- Left page vertical border -->
+  <path d="M22 26 L22 72" stroke="white" stroke-width="2" stroke-linecap="round"/>
+  <!-- Right page vertical border -->
+  <path d="M98 26 L98 72" stroke="white" stroke-width="2" stroke-linecap="round"/>
+  <!-- Left arrow -->
+  <path d="M30 88 Q20 82 22 72" stroke="#1a6b3a" stroke-width="4" stroke-linecap="round" fill="none"/>
+  <polygon points="30,84 26,92 34,92" fill="#1a6b3a" transform="rotate(-30, 30, 88)"/>
+  <!-- Right arrow -->
+  <path d="M90 88 Q100 82 98 72" stroke="#1a6b3a" stroke-width="4" stroke-linecap="round" fill="none"/>
+  <polygon points="90,84 86,92 94,92" fill="#1a6b3a" transform="rotate(30, 90, 88)"/>
+  <!-- Bottom arc -->
+  <path d="M30 92 Q60 104 90 92" stroke="#1a6b3a" stroke-width="4" stroke-linecap="round" fill="none"/>
+  <!-- Top arc -->
+  <path d="M28 76 Q60 86 92 76" stroke="#1a6b3a" stroke-width="3.5" stroke-linecap="round" fill="none" opacity="0.7"/>
+</svg>
