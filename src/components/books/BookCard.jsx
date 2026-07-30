@@ -47,7 +47,7 @@ export default function BookCard({ book, showRecommendation = false }) {
           <div className="mt-auto flex items-center justify-between pt-3 text-xs text-gray-500">
             <span className="flex items-center gap-1">
               <HiOutlineLocationMarker className="h-3.5 w-3.5" />
-              {book.distance != null ? `${book.distance} km` : book.seller?.district}
+              {book.distance != null ? `${book.distance} km` : (book.seller?.district || 'Catalog Book')}
             </span>
             {book.seller?.reputation && (
               <span className="flex items-center gap-0.5">

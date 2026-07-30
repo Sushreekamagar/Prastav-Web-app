@@ -276,11 +276,25 @@ const formatRecommendation = (book, scores, query) => ({
   seller: book.seller
     ? {
         id: book.seller._id,
+        _id: book.seller._id,
         name: book.seller.name,
         grade: book.seller.grade,
-        reputationScore: book.seller.reputationScore,
+        district: book.seller.district || book.district || 'Nepal',
+        reputationScore: book.seller.reputationScore ?? 3.0,
+        reputation: book.seller.reputationScore ?? 3.0,
+        location: book.seller.location || book.location,
       }
-    : null,
+    : (book.sellerName ? {
+        id: `catalog_${book._id || book.book_id}`,
+        _id: `catalog_${book._id || book.book_id}`,
+        name: book.sellerName,
+        grade: book.Grade,
+        district: book.district || 'Nepal',
+        reputationScore: 4.2,
+        reputation: 4.2,
+        location: book.location,
+        isDatasetSeller: true,
+      } : null),
   scores: {
     bookSimilarity: scores.bookSimilarity,
     distanceScore: scores.distanceScore,
@@ -325,7 +339,7 @@ const fetchSimilarCandidates = async (sourceBook, bookIdExclude) => {
     .select(
       'book_id title author genre keywords Grade rating description condition publish_year seller location listingType price'
     )
-    .populate('seller', 'name grade location reputationScore')
+    .populate('seller', 'name grade location district reputationScore')
     // Prioritise real marketplace listings (seller != null) over dataset-only books
     .sort({ seller: -1, rating: -1 })
     .limit(MAX_CANDIDATES)
@@ -362,7 +376,7 @@ const fetchCandidates = async (queryText, bookIdExclude = null) => {
     .select(
       'book_id title author genre keywords Grade rating description condition publish_year seller location listingType price'
     )
-    .populate('seller', 'name grade location reputationScore')
+    .populate('seller', 'name grade location district reputationScore')
     // Seller-linked listings first, then dataset books sorted by rating
     .sort({ seller: -1, rating: -1, publish_year: -1 })
     .limit(MAX_CANDIDATES)
@@ -546,7 +560,7 @@ const explainRecommendation = async (bookId, options = {}) => {
     .select(
       'book_id title author genre keywords Grade rating description condition publish_year seller location'
     )
-    .populate('seller', 'name grade location reputationScore')
+    .populate('seller', 'name grade location district reputationScore')
     .lean();
 
   if (!book) throw new AppError('Book not found.', 404);

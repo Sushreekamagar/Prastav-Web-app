@@ -53,29 +53,44 @@ export default function NearbySellersPage() {
 
       <SellerMap sellers={sellers} userLocation={location} radiusKm={5} />
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {sellers.map((seller) => (
-          <div key={seller._id} className="rounded-2xl bg-white p-5 shadow-md">
-            <div className="flex items-center gap-3">
-              <Avatar name={seller.name} />
-              <div>
-                <p className="font-semibold text-gray-900">{seller.name}</p>
-                <p className="flex items-center gap-1 text-sm text-gray-500">
-                  <HiOutlineLocationMarker className="h-4 w-4" />
-                  {seller.district}
-                </p>
-              </div>
-            </div>
-            <div className="mt-3 flex items-center justify-between">
-              <Badge variant="primary">{seller.distance} km</Badge>
-              <span className="text-sm text-gray-500">★ {seller.reputation}</span>
-            </div>
-            {seller.bookTitle && (
-              <p className="mt-2 text-sm italic text-gray-600">&ldquo;{seller.bookTitle}&rdquo;</p>
-            )}
+      {sellers.length === 0 ? (
+        <div className="mt-6 rounded-2xl bg-white p-6 shadow-md text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-prastav-100 text-prastav-700 text-xl">
+            📍
           </div>
-        ))}
-      </div>
+          <h3 className="mt-3 font-semibold text-gray-900">No Student Sellers Found Within 5 KM</h3>
+          <p className="mt-1 text-sm text-gray-600 max-w-md mx-auto">
+            Currently, no registered students have listed physical books within 5 km of your location.
+          </p>
+          <div className="mt-4 rounded-xl bg-amber-50 p-4 text-xs sm:text-sm text-amber-900 text-left max-w-lg mx-auto leading-relaxed border border-amber-200">
+            💡 <strong>Note about Dataset Catalog Books:</strong> The 50,000+ reference books in the connected dataset are master catalog items available platform-wide. Once local students list their physical copies for sale or exchange, their locations & addresses will automatically appear on this map!
+          </div>
+        </div>
+      ) : (
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {sellers.map((seller) => (
+            <div key={seller._id} className="rounded-2xl bg-white p-5 shadow-md">
+              <div className="flex items-center gap-3">
+                <Avatar name={seller.name} />
+                <div>
+                  <p className="font-semibold text-gray-900">{seller.name}</p>
+                  <p className="flex items-center gap-1 text-sm text-gray-500">
+                    <HiOutlineLocationMarker className="h-4 w-4 text-emerald-600" />
+                    {seller.district || 'Nepal'}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-3 flex items-center justify-between">
+                <Badge variant="primary">{seller.distance} km</Badge>
+                <span className="text-sm text-gray-500">★ {seller.reputation}</span>
+              </div>
+              {seller.bookTitle && (
+                <p className="mt-2 text-sm italic text-gray-600">&ldquo;{seller.bookTitle}&rdquo;</p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </DashboardPage>
   )
 }

@@ -84,15 +84,33 @@ export async function getNearbySellers(params = {}) {
   }
   const { data } = await api.get('/books/nearby', { params: apiParams })
   const sellers = (data.books || []).map((book) => {
-    if (!book.seller) return null
+    const s = book.seller || (book.sellerName ? {
+      _id: `catalog_${book._id || book.id}`,
+      name: book.sellerName,
+      district: book.district || 'Kathmandu',
+      reputationScore: 4.2,
+      location: book.location
+    } : null)
+
+    if (!s) return null
+
+    let loc = null
+    if (s.location?.coordinates?.length === 2) {
+      loc = { lat: s.location.coordinates[1], lng: s.location.coordinates[0] }
+    } else if (book.location?.coordinates?.length === 2) {
+      loc = { lat: book.location.coordinates[1], lng: book.location.coordinates[0] }
+    }
+
     return {
-      _id: book.seller._id || book.seller.id,
-      name: book.seller.name,
-      district: book.seller.district || 'Unknown District',
-      distance: book.distanceKm || 0,
-      reputation: book.seller.reputationScore || 3.0,
+      _id: s._id || s.id || book._id,
+      name: s.name || 'Student Seller',
+      district: s.district || book.district || 'Kathmandu',
+      distance: book.distanceKm || book.distance || 0,
+      reputation: s.reputationScore || s.reputation || 4.2,
       bookTitle: book.title,
-      bookId: book._id,
+      bookId: book._id || book.id,
+      location: loc,
+      isDatasetSeller: !!s.isDatasetSeller,
     }
   }).filter(Boolean)
   return { sellers }

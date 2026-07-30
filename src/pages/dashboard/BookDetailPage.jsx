@@ -218,38 +218,78 @@ export default function BookDetailPage() {
                 </Button>
               </>
             ) : (
-              <div className="mt-6 rounded-xl bg-amber-50 p-4 text-sm text-amber-800">
-                <p className="font-medium">📚 Dataset Catalog Book</p>
-                <p className="mt-1 text-amber-700">Yo book dataset bata aako ho. Koi user le list gareko xaina. Browse garnus — user-listed books ma request pathaunus!</p>
+              <div className="mt-6 rounded-xl bg-amber-50 p-4 text-sm text-amber-900 border border-amber-200">
+                <div className="flex items-center gap-2 font-semibold">
+                  <span>📚 Dataset Catalog Book</span>
+                  <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-800 font-medium">Dataset Connected ✓</span>
+                </div>
+                <p className="mt-2 text-amber-800 leading-relaxed text-xs sm:text-sm">
+                  Yo book Prastav ko 50,000+ reference dataset sanga connect vako xa. Yo static catalog book ho (no specific student seller assigned yet). Tapai sanga yo book xa vane, tapai le list garnu saknuhunchha!
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-3 w-full border-amber-400 bg-white text-amber-900 hover:bg-amber-100"
+                  to={`/dashboard/listings/create?title=${encodeURIComponent(book.title)}&author=${encodeURIComponent(book.author || '')}`}
+                >
+                  ➕ List Your Copy Of This Book
+                </Button>
               </div>
             )}
           </div>
 
-          {/* Seller card */}
-          <div className="rounded-2xl bg-white p-6 shadow-md">
-            <h3 className="font-semibold text-gray-900">Seller</h3>
-            <div className="mt-4 flex items-center gap-3">
-              <Avatar name={book.seller?.name} />
-              <div>
-                <p className="font-medium text-gray-900">{book.seller?.name}</p>
-                <div className="flex items-center gap-3 text-sm text-gray-500">
-                  <span className="flex items-center gap-1">
-                    <HiOutlineStar className="h-4 w-4 text-amber-400" />
-                    {book.seller?.reputation ?? '–'}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <HiOutlineLocationMarker className="h-4 w-4" />
-                    {book.seller?.district ?? 'Unknown'}
-                  </span>
+          {/* Seller or Catalog Source card */}
+          {book.seller ? (
+            <div className="rounded-2xl bg-white p-6 shadow-md">
+              <h3 className="font-semibold text-gray-900">Seller Details</h3>
+              <div className="mt-4 flex items-center gap-3">
+                <Avatar name={book.seller?.name} />
+                <div>
+                  <p className="font-medium text-gray-900">{book.seller?.name}</p>
+                  <div className="flex items-center gap-3 text-sm text-gray-500">
+                    <span className="flex items-center gap-1">
+                      <HiOutlineStar className="h-4 w-4 text-amber-400" />
+                      {book.seller?.reputationScore ?? book.seller?.reputation ?? 3.0}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <HiOutlineLocationMarker className="h-4 w-4 text-emerald-600" />
+                      {book.seller?.district || 'Nepal'}
+                    </span>
+                  </div>
                 </div>
               </div>
+              {book.distance != null && (
+                <p className="mt-3 text-sm text-prastav-700">
+                  📍 {book.distance} km from your location
+                </p>
+              )}
             </div>
-            {book.distance != null && (
-              <p className="mt-3 text-sm text-prastav-700">
-                📍 {book.distance} km from your location
+          ) : (
+            <div className="rounded-2xl bg-white p-6 shadow-md">
+              <h3 className="font-semibold text-gray-900">Catalog Source</h3>
+              <div className="mt-4 flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-prastav-100 text-prastav-700 text-xl font-bold">
+                  📚
+                </div>
+                <div>
+                  <p className="font-medium text-gray-900">Prastav Master Catalog</p>
+                  <div className="flex items-center gap-3 text-sm text-gray-500">
+                    <span className="flex items-center gap-1">
+                      <HiOutlineStar className="h-4 w-4 text-amber-400" />
+                      {book.rating ? Number(book.rating).toFixed(1) : '4.5'}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <HiOutlineLocationMarker className="h-4 w-4 text-prastav-600" />
+                      Dataset Catalog Entry
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <p className="mt-3 text-xs text-gray-500 leading-relaxed">
+                Connected database item. Specific student seller address will appear once a user posts a listing for this book.
               </p>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
 

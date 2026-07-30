@@ -3,7 +3,7 @@ const AppError = require('../utils/AppError');
 const Book = require('../models/Book');
 const { calculateHaversine } = require('./haversineService');
 
-const SELLER_FIELDS = 'name email reputationScore location';
+const SELLER_FIELDS = 'name email reputationScore location district grade profileImage esewaQR khaltiQR';
 const DEFAULT_PAGE = 1;
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
@@ -14,6 +14,37 @@ const MAX_LIMIT = 100;
  */
 const formatBook = (book, extra = {}) => {
   const b = book.toObject ? book.toObject() : { ...book };
+
+  let sellerData = null;
+  if (b.seller && typeof b.seller === 'object') {
+    sellerData = {
+      _id: b.seller._id || b.seller.id,
+      id: b.seller._id || b.seller.id,
+      name: b.seller.name,
+      email: b.seller.email,
+      district: b.seller.district || b.district || 'Nepal',
+      reputationScore: b.seller.reputationScore ?? 3.0,
+      reputation: b.seller.reputationScore ?? 3.0,
+      location: b.seller.location || b.location,
+      esewaQR: b.seller.esewaQR,
+      khaltiQR: b.seller.khaltiQR,
+    };
+  } else if (b.seller) {
+    sellerData = b.seller;
+  } else if (b.sellerName) {
+    sellerData = {
+      _id: `catalog_${b._id || b.book_id}`,
+      id: `catalog_${b._id || b.book_id}`,
+      name: b.sellerName,
+      email: b.sellerEmail || null,
+      phone: b.sellerPhone || null,
+      district: b.district || 'Nepal',
+      reputationScore: 4.2,
+      reputation: 4.2,
+      location: b.location,
+      isDatasetSeller: true,
+    };
+  }
 
   return {
     id: b._id,
@@ -29,7 +60,9 @@ const formatBook = (book, extra = {}) => {
     publishYear: b.publish_year,
     price: b.price ?? 0,
     imageUrl: b.imageUrl,
-    seller: b.seller,
+    seller: sellerData,
+    sellerName: b.sellerName || null,
+    district: b.district || null,
     location: b.location,
     isAvailable: b.isAvailable !== false,
     createdAt: b.createdAt,
