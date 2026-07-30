@@ -1,7 +1,7 @@
 {
   "info": {
     "_postman_id": "45d1b43c-a556-43b1-800f-2acfb54b4726",
-    "name": "Prastav Testing",
+    "name": "Prastav Testing (Buyer)",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "52200439",
     "_collection_link": "https://go.postman.co/collection/52200439-45d1b43c-a556-43b1-800f-2acfb54b4726?source=collection_link"
@@ -369,6 +369,14 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "request book",
+          "request": {
+            "method": "GET",
+            "header": []
+          },
+          "response": []
         }
       ]
     },
@@ -391,6 +399,46 @@
         {
           "name": "create transaction",
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_secret_0aih}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"bookId\": \"6a6ad6b40de87753fe5ad6d3\",\r\n  \"requestType\": \"Self-Pickup\"\r\n \r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/transactions/request",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "transactions",
+                "request"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "complete transaction",
+          "request": {
             "method": "GET",
             "header": []
           },
@@ -400,14 +448,27 @@
     },
     {
       "name": "Payment",
-      "item": []
+      "item": [
+        {
+          "name": "Payment QR",
+          "request": {
+            "method": "GET",
+            "header": []
+          },
+          "response": []
+        },
+        {
+          "name": "New Request",
+          "request": {
+            "method": "GET",
+            "header": []
+          },
+          "response": []
+        }
+      ]
     },
     {
       "name": "Notifications",
-      "item": []
-    },
-    {
-      "name": "Admin",
       "item": []
     },
     {
@@ -430,6 +491,10 @@
     },
     {
       "key": "json_web_token_0oi5",
+      "secret": true
+    },
+    {
+      "key": "auth_secret_0aih",
       "secret": true
     }
   ]
