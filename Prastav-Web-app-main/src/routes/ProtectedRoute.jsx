@@ -19,11 +19,6 @@ export default function ProtectedRoute({ roles, sellerOnly }) {
     return <Navigate to="/login" state={{ from: location.pathname }} replace />
   }
 
-  // Force users to set their preferences if they haven't yet
-  // Admins skip this step — they don't have buyer/seller preferences
-  if (user?.role !== 'admin' && !user?.preferencesSet && location.pathname !== '/dashboard/preferences') {
-    return <Navigate to="/dashboard/preferences" replace />
-  }
 
   if (sellerOnly && user?.role !== 'seller' && user?.role !== 'both') {
     return <Navigate to="/dashboard" replace />

@@ -78,17 +78,8 @@ export default function BookDetailPage() {
 
   function handleDeliverySelect(type) {
     setRequestType(type)
-    if (type === 'Self-Pickup') {
-      setPaymentMethod('cod')
-    } else {
-      setPaymentMethod('esewa')
-    }
-    if (isFreeListingType) {
-      // Skip payment step for free listings
-      setStep(STEP_MESSAGE)
-    } else {
-      setStep(STEP_PAYMENT)
-    }
+    setPaymentMethod(type === 'Self-Pickup' ? 'cod' : 'esewa')
+    setStep(STEP_MESSAGE)
   }
 
   function handlePaymentSelect(method) {
@@ -393,37 +384,67 @@ export default function BookDetailPage() {
           </div>
         )}
 
-        {/* STEP 3 — Message */}
+        {/* STEP 2 — Message & Confirmation */}
         {step === STEP_MESSAGE && (
           <div className="space-y-4">
             {/* Summary banner */}
-            <div className="rounded-xl bg-prastav-50 p-4 text-sm">
-              <div className="flex flex-wrap gap-3">
-                <span className="inline-flex items-center gap-1 rounded-full bg-prastav-100 px-3 py-1 text-prastav-800">
+            <div className="rounded-xl bg-prastav-50 p-4 text-sm space-y-3">
+              <div className="flex flex-wrap gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-prastav-100 px-3 py-1 text-xs font-semibold text-prastav-800">
                   {requestType === 'Delivery' ? <HiOutlineTruck className="h-4 w-4" /> : <HiOutlineUser className="h-4 w-4" />}
-                  {requestType === 'Delivery' ? 'Home Delivery' : 'Self Pickup'}
+                  {requestType === 'Delivery' ? 'Home Delivery (Courier)' : 'Self Pickup (Meetup)'}
                 </span>
-                {!isFreeListingType && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-3 py-1 text-blue-800">
-                    {paymentMethod === 'cod'
-                      ? <><HiOutlineCash className="h-4 w-4" /> Cash on Delivery</>
-                      : <><HiOutlineCreditCard className="h-4 w-4" /> {paymentMethod === 'esewa' ? 'eSewa' : 'Khalti'} QR</>
-                    }
+                {isFreeListingType ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800">
+                    <HiOutlineCheckCircle className="h-4 w-4" /> Free (No Payment)
                   </span>
-                )}
-                {isFreeListingType && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-emerald-800">
-                    <HiOutlineCheckCircle className="h-4 w-4" /> No Payment Required
+                ) : requestType === 'Self-Pickup' ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-800">
+                    <HiOutlineCash className="h-4 w-4" /> Cash on Delivery (COD)
                   </span>
-                )}
+                ) : null}
               </div>
+
+              {/* Preferred payment selection for Home Delivery */}
+              {!isFreeListingType && requestType === 'Delivery' && (
+                <div className="pt-2 border-t border-prastav-200/60">
+                  <p className="text-xs font-medium text-gray-700 mb-2">Preferred QR Payment Method (after seller accepts):</p>
+                  <div className="flex gap-3">
+                    <label className={`flex flex-1 items-center justify-center gap-2 rounded-lg border p-2.5 text-xs font-semibold cursor-pointer transition ${
+                      paymentMethod === 'esewa' ? 'border-emerald-500 bg-emerald-50 text-emerald-800' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+                    }`}>
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        value="esewa"
+                        checked={paymentMethod === 'esewa'}
+                        onChange={() => setPaymentMethod('esewa')}
+                        className="sr-only"
+                      />
+                      <HiOutlineCreditCard className="h-4 w-4 text-emerald-600" /> eSewa QR
+                    </label>
+                    <label className={`flex flex-1 items-center justify-center gap-2 rounded-lg border p-2.5 text-xs font-semibold cursor-pointer transition ${
+                      paymentMethod === 'khalti' ? 'border-purple-500 bg-purple-50 text-purple-800' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+                    }`}>
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        value="khalti"
+                        checked={paymentMethod === 'khalti'}
+                        onChange={() => setPaymentMethod('khalti')}
+                        className="sr-only"
+                      />
+                      <HiOutlineCreditCard className="h-4 w-4 text-purple-600" /> Khalti QR
+                    </label>
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* QR warning if applicable */}
-            {qrWarning && (
-              <div className="rounded-xl bg-amber-50 p-3 text-sm text-amber-700 flex items-start gap-2">
-                <HiOutlineExclamation className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-500" />
-                <p>{qrWarning}</p>
+            {!isFreeListingType && requestType === 'Delivery' && (
+              <div className="rounded-xl bg-blue-50 p-3 text-xs text-blue-800 flex items-start gap-2 border border-blue-100">
+                <HiOutlineCheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
+                <p>Request is sent to seller first. You will pay via QR code ONLY AFTER the seller accepts your request.</p>
               </div>
             )}
 
@@ -432,23 +453,19 @@ export default function BookDetailPage() {
               placeholder={
                 requestType === 'Self-Pickup'
                   ? 'Suggest a meetup location or landmark...'
-                  : 'Hi, I am interested in this book...'
+                  : 'Hi, I am interested in buying this book...'
               }
-              rows={4}
+              rows={3}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
             />
 
-            <div className="flex justify-between gap-3">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setStep(isFreeListingType ? STEP_DELIVERY : STEP_PAYMENT)}
-              >
+            <div className="flex justify-between gap-3 pt-1">
+              <Button variant="outline" size="sm" onClick={() => setStep(STEP_DELIVERY)}>
                 ← Back
               </Button>
               <Button size="sm" onClick={handleRequest} disabled={submitting}>
-                {submitting ? 'Sending...' : 'Send Request'}
+                {submitting ? 'Sending Request...' : '✉️ Send Request'}
               </Button>
             </div>
           </div>

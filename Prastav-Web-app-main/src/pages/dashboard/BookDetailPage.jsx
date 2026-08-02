@@ -78,15 +78,11 @@ export default function BookDetailPage() {
 
   function handleDeliverySelect(type) {
     setRequestType(type)
-    if (type === 'Self-Pickup') {
-      setPaymentMethod('cod')
-    } else {
-      setPaymentMethod('esewa')
-    }
-    if (isFreeListingType) {
-      // Skip payment step for free listings
+    if (type === 'Self-Pickup' || isFreeListingType) {
+      setPaymentMethod(type === 'Self-Pickup' ? 'cod' : 'free')
       setStep(STEP_MESSAGE)
     } else {
+      setPaymentMethod('esewa')
       setStep(STEP_PAYMENT)
     }
   }
@@ -403,7 +399,7 @@ export default function BookDetailPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setStep(isFreeListingType ? STEP_DELIVERY : STEP_PAYMENT)}
+                onClick={() => setStep((isFreeListingType || requestType === 'Self-Pickup') ? STEP_DELIVERY : STEP_PAYMENT)}
               >
                 ← Back
               </Button>

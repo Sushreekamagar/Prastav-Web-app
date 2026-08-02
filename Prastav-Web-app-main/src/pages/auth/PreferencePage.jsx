@@ -446,7 +446,12 @@ export default function PreferencePage() {
       
       updateUser(finalUser)
       toast.success('Preferences saved! 🎉')
-      navigate('/dashboard')
+      if ((role === 'seller' || role === 'both') && !finalUser?.esewaQR && !finalUser?.khaltiQR) {
+        toast.info('Please upload your eSewa / Khalti QR code so buyers can pay you!')
+        navigate('/dashboard/settings')
+      } else {
+        navigate('/dashboard')
+      }
     } catch (err) {
       toast.error(err.message || 'Failed to save preferences')
     } finally {

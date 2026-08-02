@@ -62,9 +62,6 @@ export default function NearbySellersPage() {
           <p className="mt-1 text-sm text-gray-600 max-w-md mx-auto">
             Currently, no registered students have listed physical books within 5 km of your location.
           </p>
-          <div className="mt-4 rounded-xl bg-amber-50 p-4 text-xs sm:text-sm text-amber-900 text-left max-w-lg mx-auto leading-relaxed border border-amber-200">
-            💡 <strong>Note about Dataset Catalog Books:</strong> The 50,000+ reference books in the connected dataset are master catalog items available platform-wide. Once local students list their physical copies for sale or exchange, their locations & addresses will automatically appear on this map!
-          </div>
         </div>
       ) : (
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

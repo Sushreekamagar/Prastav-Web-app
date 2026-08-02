@@ -24,7 +24,7 @@ const WEIGHTS = {
 const DEFAULT_RADIUS_KM = 5;
 const MAX_CANDIDATES = 2000; // cap in-memory scoring for performance on 50k dataset
 const DEFAULT_PAGE = 1;
-const DEFAULT_LIMIT = 5;
+const DEFAULT_LIMIT = 12; // increased so seller listings are always visible
 const MAX_LIMIT = 50;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -195,27 +195,34 @@ const calculateGradeScore = (buyerGrade, bookGrade) => {
 };
 
 /**
- * calculateReputationScore — Factor 4 (weight 5%)
+ * calculateReputationScore — Factor 4 (weight 20%)
  *
- * seller.reputationScore normalised: reputation / 5 → 0–1.
- * Imported books without seller use book.rating / 5 as fallback.
+ * For real seller listings: seller.reputationScore / 5 → 0–1.
+ *   New sellers start at 3.0 → score 0.6 (neutral-good, not penalized).
+ * For dataset-only catalog books: book.rating / 5, but only if rating > 0.
+ *   rating = 0 (unrated) → 0.5 neutral so unrated catalog books don't outscore real sellers.
  */
 const calculateReputationScore = (book) => {
   const sellerRep = book.seller?.reputationScore;
 
+  // Real seller listing — use their account reputation
   if (sellerRep != null && !Number.isNaN(sellerRep)) {
     return Math.min(Math.max(sellerRep / 5, 0), 1);
   }
 
-  if (book.rating != null && !Number.isNaN(book.rating)) {
+  // Dataset catalog book — only use rating if it is a real positive value
+  if (book.rating != null && !Number.isNaN(book.rating) && book.rating > 0) {
     return Math.min(Math.max(book.rating / 5, 0), 1);
   }
 
-  return 0.6;
+  // Unrated dataset book → neutral score (don't reward/penalize unrated entries)
+  return 0.5;
 };
 
 /**
  * computeFinalScore — Additive hybrid formula from capstone spec.
+ * isRealListing bonus is applied SEPARATELY in the sort (not baked into score)
+ * so the capstone formula weights remain academically accurate.
  */
 const computeFinalScore = (bookSimilarity, distanceScore, reputationScore) => {
   const finalScore =
@@ -229,6 +236,10 @@ const computeFinalScore = (bookSimilarity, distanceScore, reputationScore) => {
 const buildWhyRecommended = (scores, book, query) => {
   const reasons = [];
 
+  if (scores.isRealListing) {
+    reasons.push('Listed by a real student seller — available to buy/exchange now.');
+  }
+
   if (scores.bookSimilarity >= 0.6) {
     reasons.push(`Strong content match for "${query || 'your interests'}" in title, author, genre, or keywords.`);
   } else if (scores.bookSimilarity >= 0.3) {
@@ -236,7 +247,9 @@ const buildWhyRecommended = (scores, book, query) => {
   }
 
   if (scores.distanceKm != null && scores.withinRadius) {
-    reasons.push(`Seller/book is ${scores.distanceKm} km away (within your search radius).`);
+    reasons.push(`Seller is ${scores.distanceKm} km away (within your search radius).`);
+  } else if (scores.isRealListing && scores.missingLocation) {
+    reasons.push('Seller location not set — update your profile to see distance.');
   } else if (scores.missingLocation) {
     reasons.push('Location unavailable — neutral distance score applied (common for imported catalogue books).');
   }
@@ -248,7 +261,7 @@ const buildWhyRecommended = (scores, book, query) => {
   }
 
   if (scores.reputationScore >= 0.7) {
-    reasons.push('Seller/book has a strong reputation rating.');
+    reasons.push('Seller has a strong reputation rating.');
   }
 
   if (reasons.length === 0) {
@@ -273,6 +286,8 @@ const formatRecommendation = (book, scores, query) => ({
   listingType: book.listingType || null,
   price: book.price ?? 0,
   imageUrl: book.imageUrl || null,
+  // isRealListing: true means a real student seller has listed this physical book
+  isRealListing: scores.isRealListing || false,
   seller: book.seller
     ? {
         id: book.seller._id,
@@ -300,6 +315,7 @@ const formatRecommendation = (book, scores, query) => ({
     distanceScore: scores.distanceScore,
     gradeScore: scores.gradeScore,
     reputationScore: scores.reputationScore,
+    isRealListing: scores.isRealListing,
     weighted: {
       bookSimilarity: parseFloat((scores.bookSimilarity * WEIGHTS.bookSimilarity).toFixed(4)),
       distance: parseFloat((scores.distanceScore * WEIGHTS.distance).toFixed(4)),
@@ -317,33 +333,42 @@ const formatRecommendation = (book, scores, query) => ({
  * fetchSimilarCandidates — Finds books similar by genre, Grade, or author.
  */
 const fetchSimilarCandidates = async (sourceBook, bookIdExclude) => {
-  const filter = {
+  const baseFilter = {
     isAvailable: { $ne: false },
     isReported: { $ne: true },
     isDeleted: { $ne: true },
-    // NOTE: No rating filter here — user-listed books start with rating=0
-    // and must still appear in recommendations.
     _id: { $ne: bookIdExclude },
-    $or: [
-      ...(sourceBook.genre ? [{ genre: sourceBook.genre }] : []),
-      ...(sourceBook.Grade ? [{ Grade: sourceBook.Grade }] : []),
-      ...(sourceBook.author ? [{ author: sourceBook.author }] : []),
-    ],
   };
 
-  if (!filter.$or.length) {
-    delete filter.$or;
-  }
+  const orConditions = [
+    ...(sourceBook.genre ? [{ genre: sourceBook.genre }] : []),
+    ...(sourceBook.Grade ? [{ Grade: sourceBook.Grade }] : []),
+    ...(sourceBook.author ? [{ author: sourceBook.author }] : []),
+  ];
 
-  return Book.find(filter)
-    .select(
-      'book_id title author genre keywords Grade rating description condition publish_year seller location listingType price'
-    )
-    .populate('seller', 'name grade location district reputationScore')
-    // Prioritise real marketplace listings (seller != null) over dataset-only books
-    .sort({ seller: -1, rating: -1 })
-    .limit(MAX_CANDIDATES)
-    .lean();
+  const filter = orConditions.length > 0
+    ? { ...baseFilter, $or: orConditions }
+    : baseFilter;
+
+  const SELECT = 'book_id title author genre keywords Grade rating description condition publish_year seller location listingType price';
+
+  // IMPORTANT: Always fetch seller-linked (real marketplace) listings first,
+  // regardless of rating, so they are never cut off by MAX_CANDIDATES cap.
+  const [sellerBooks, datasetBooks] = await Promise.all([
+    Book.find({ ...filter, seller: { $ne: null } })
+      .select(SELECT)
+      .populate('seller', 'name grade location district reputationScore')
+      .sort({ createdAt: -1 })
+      .limit(500)
+      .lean(),
+    Book.find({ ...filter, seller: null })
+      .select(SELECT)
+      .sort({ rating: -1 })
+      .limit(MAX_CANDIDATES - 500)
+      .lean(),
+  ]);
+
+  return [...sellerBooks, ...datasetBooks];
 };
 
 /**
@@ -352,19 +377,22 @@ const fetchSimilarCandidates = async (sourceBook, bookIdExclude) => {
  * Limits to MAX_CANDIDATES documents to avoid loading all 50k books.
  */
 const fetchCandidates = async (queryText, bookIdExclude = null) => {
-  const filter = {
+  const baseFilter = {
     isAvailable: { $ne: false },
     isReported: { $ne: true },
     isDeleted: { $ne: true },
   };
 
   if (bookIdExclude) {
-    filter._id = { $ne: bookIdExclude };
+    baseFilter._id = { $ne: bookIdExclude };
   }
 
+  const SELECT = 'book_id title author genre keywords Grade rating description condition publish_year seller location listingType price';
+
+  let textFilter = {};
   if (queryText && String(queryText).trim()) {
     const regex = new RegExp(String(queryText).trim(), 'i');
-    filter.$or = [
+    textFilter.$or = [
       { title: regex },
       { author: regex },
       { genre: regex },
@@ -372,19 +400,34 @@ const fetchCandidates = async (queryText, bookIdExclude = null) => {
     ];
   }
 
-  return Book.find(filter)
-    .select(
-      'book_id title author genre keywords Grade rating description condition publish_year seller location listingType price'
-    )
-    .populate('seller', 'name grade location district reputationScore')
-    // Seller-linked listings first, then dataset books sorted by rating
-    .sort({ seller: -1, rating: -1, publish_year: -1 })
-    .limit(MAX_CANDIDATES)
-    .lean();
+  // IMPORTANT: Fetch seller-linked (real marketplace) listings in a separate query
+  // so they are NEVER cut off by the MAX_CANDIDATES cap, regardless of their rating.
+  // New seller listings default to rating=0 and would otherwise be buried below
+  // 50k+ dataset books and never reach the in-memory scoring phase.
+  const [sellerBooks, datasetBooks] = await Promise.all([
+    Book.find({ ...baseFilter, ...textFilter, seller: { $ne: null } })
+      .select(SELECT)
+      .populate('seller', 'name grade location district reputationScore')
+      .sort({ createdAt: -1 })
+      .limit(500)
+      .lean(),
+    Book.find({ ...baseFilter, ...textFilter, seller: null })
+      .select(SELECT)
+      .sort({ rating: -1, publish_year: -1 })
+      .limit(MAX_CANDIDATES - 500)
+      .lean(),
+  ]);
+
+  return [...sellerBooks, ...datasetBooks];
 };
 
 /**
  * scoreBook — Runs all four factors and returns scored payload or null if excluded.
+ * isRealListing = true when the book has a real student seller linked (not a dataset catalog entry).
+ *
+ * IMPORTANT: Real seller listings are NEVER excluded by radius — they are always scored and returned.
+ * Only dataset catalog books (no real seller) are excluded when outside the buyer's radius.
+ * This ensures a seller's listed book is always visible to any buyer regardless of distance.
  */
 const scoreBook = (book, context) => {
   const {
@@ -402,8 +445,14 @@ const scoreBook = (book, context) => {
 
   const distance = calculateDistanceScore(buyerLat, buyerLng, book, radiusKm);
 
-  // Exclude books with known location outside radius when buyer provided coordinates
-  if (enforceRadius && !distance.withinRadius && !distance.missingLocation) {
+  // isRealListing: true when a real student seller has listed this physical book
+  const isRealListing = book.seller != null && typeof book.seller === 'object'
+    ? true
+    : (book.seller != null);
+
+  // Radius exclusion: ONLY apply to dataset catalog books, never to real seller listings.
+  // Real seller books always show up — their distance score naturally ranks closer ones higher.
+  if (enforceRadius && !distance.withinRadius && !distance.missingLocation && !isRealListing) {
     return null;
   }
 
@@ -423,6 +472,7 @@ const scoreBook = (book, context) => {
       distanceScore: distance.distanceScore,
       gradeScore,
       reputationScore,
+      isRealListing,
       distanceKm: distance.distanceKm,
       withinRadius: distance.withinRadius,
       missingLocation: distance.missingLocation,
@@ -458,6 +508,11 @@ const resolveBuyerContext = (options = {}) => {
 
 /**
  * GET /api/recommendations
+ *
+ * Sort priority (highest to lowest):
+ *  1. isRealListing   — real student seller books ALWAYS above catalog-only books
+ *  2. gradeScore      — grade match within each tier
+ *  3. finalScore      — hybrid score as tiebreaker
  */
 const getRecommendations = async (options = {}) => {
   const context = resolveBuyerContext(options);
@@ -469,10 +524,18 @@ const getRecommendations = async (options = {}) => {
     .map((book) => scoreBook(book, context))
     .filter(Boolean)
     .sort((a, b) => {
+      // Tier 1: real seller listings always first
+      const aReal = a.scores.isRealListing ? 1 : 0;
+      const bReal = b.scores.isRealListing ? 1 : 0;
+      if (bReal !== aReal) return bReal - aReal;
+
+      // Tier 2: grade match
       if (b.scores.gradeScore !== a.scores.gradeScore) {
-        return b.scores.gradeScore - a.scores.gradeScore; // Grade is highest priority
+        return b.scores.gradeScore - a.scores.gradeScore;
       }
-      return b.scores.finalScore - a.scores.finalScore; // Then hybrid score
+
+      // Tier 3: hybrid score
+      return b.scores.finalScore - a.scores.finalScore;
     });
 
   const paginated = scored.slice(skip, skip + limit);
@@ -522,9 +585,17 @@ const getSimilarRecommendations = async (bookId, options = {}) => {
     .map((book) => scoreBook(book, context))
     .filter(Boolean)
     .sort((a, b) => {
+      // Tier 1: real seller listings always first
+      const aReal = a.scores.isRealListing ? 1 : 0;
+      const bReal = b.scores.isRealListing ? 1 : 0;
+      if (bReal !== aReal) return bReal - aReal;
+
+      // Tier 2: grade match
       if (b.scores.gradeScore !== a.scores.gradeScore) {
         return b.scores.gradeScore - a.scores.gradeScore;
       }
+
+      // Tier 3: hybrid score
       return b.scores.finalScore - a.scores.finalScore;
     });
 

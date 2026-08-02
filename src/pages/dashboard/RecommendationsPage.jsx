@@ -39,28 +39,45 @@ function RecommendationCard({ book }) {
     'text-gray-600 bg-gray-50'
 
   const whyRecommended = book.whyRecommended || book.scores?.whyRecommended || []
+  const isReal = book.isRealListing || (book.seller && !book.seller.isDatasetSeller)
 
   return (
     <Link
       to={`/dashboard/books/${book._id}`}
-      className="flex flex-col rounded-2xl bg-white shadow-md hover:shadow-lg transition-shadow overflow-hidden"
+      className={`flex flex-col rounded-2xl shadow-md hover:shadow-lg transition-shadow overflow-hidden ${
+        isReal ? 'bg-white ring-2 ring-emerald-200' : 'bg-gray-50'
+      }`}
     >
-      {/* Book icon area */}
-      <div className="relative flex h-36 items-center justify-center bg-gradient-to-br from-prastav-100 to-prastav-200">
-        <svg viewBox="0 0 64 64" className="h-14 w-14 opacity-60" fill="none">
-          <path d="M16 20h14v28H16c-2 0-3-1-3-3V23c0-2 1-3 3-3z" fill="#166534" />
-          <path d="M34 20h14c2 0 3 1 3 3v22c0 2-1 3-3 3H34V20z" fill="#22c55e" />
-        </svg>
+      {/* Book icon / cover area */}
+      <div className={`relative flex h-36 items-center justify-center ${
+        isReal
+          ? 'bg-gradient-to-br from-emerald-50 to-prastav-100'
+          : 'bg-gradient-to-br from-gray-100 to-gray-200'
+      }`}>
+        {book.imageUrl ? (
+          <img src={book.imageUrl} alt={book.title} className="h-full w-full object-cover" />
+        ) : (
+          <svg viewBox="0 0 64 64" className="h-14 w-14 opacity-60" fill="none">
+            <path d="M16 20h14v28H16c-2 0-3-1-3-3V23c0-2 1-3 3-3z" fill={isReal ? '#166534' : '#9ca3af'} />
+            <path d="M34 20h14c2 0 3 1 3 3v22c0 2-1 3-3 3H34V20z" fill={isReal ? '#22c55e' : '#d1d5db'} />
+          </svg>
+        )}
         {/* Score badge */}
         {score != null && (
           <span className={`absolute top-3 right-3 rounded-full px-2.5 py-0.5 text-xs font-bold ${scoreColor}`}>
             {score}% match
           </span>
         )}
-        {/* Listing type */}
-        <span className="absolute top-3 left-3 rounded-full bg-white/90 px-2 py-0.5 text-xs font-medium text-prastav-700">
-          {getListingTypeLabel(book.listingType)}
-        </span>
+        {/* Real seller vs Catalog badge */}
+        {isReal ? (
+          <span className="absolute top-3 left-3 rounded-full bg-emerald-500 px-2 py-0.5 text-xs font-semibold text-white shadow-sm">
+            🟢 Available
+          </span>
+        ) : (
+          <span className="absolute top-3 left-3 rounded-full bg-gray-400/80 px-2 py-0.5 text-xs font-medium text-white">
+            📚 Catalog
+          </span>
+        )}
       </div>
 
       <div className="flex flex-1 flex-col p-4">
@@ -69,23 +86,27 @@ function RecommendationCard({ book }) {
 
         {/* Price and condition */}
         <div className="mt-2 flex items-center justify-between">
-          <span className="text-base font-bold text-prastav-800">{formatPrice(book.price)}</span>
-          <Badge variant="default">{getConditionLabel(book.condition)}</Badge>
+          <span className={`text-base font-bold ${isReal ? 'text-prastav-800' : 'text-gray-500'}`}>
+            {isReal ? formatPrice(book.price) : 'No seller yet'}
+          </span>
+          {book.condition && <Badge variant="default">{getConditionLabel(book.condition)}</Badge>}
         </div>
 
         {/* Seller + distance */}
-        <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
-          <span className="flex items-center gap-1">
-            <HiOutlineLocationMarker className="h-3.5 w-3.5 shrink-0" />
-            {book.distance != null ? `${book.distance} km away` : (book.seller?.district || 'Unknown')}
-          </span>
-          {(book.seller?.reputationScore || book.seller?.reputation) && (
-            <span className="flex items-center gap-0.5">
-              <HiOutlineStar className="h-3.5 w-3.5 text-amber-400" />
-              {book.seller?.reputationScore || book.seller?.reputation}
+        {isReal && (
+          <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
+            <span className="flex items-center gap-1">
+              <HiOutlineLocationMarker className="h-3.5 w-3.5 shrink-0" />
+              {book.distance != null ? `${book.distance} km away` : (book.seller?.district || 'Nepal')}
             </span>
-          )}
-        </div>
+            {(book.seller?.reputationScore || book.seller?.reputation) && (
+              <span className="flex items-center gap-0.5">
+                <HiOutlineStar className="h-3.5 w-3.5 text-amber-400" />
+                {book.seller?.reputationScore || book.seller?.reputation}
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Why recommended factors */}
         {book.recommendationFactors && (
@@ -132,7 +153,7 @@ export default function RecommendationsPage() {
     async function load() {
       setLoading(true)
       try {
-        const result = await getRecommendations({ q: debouncedSearch })
+        const result = await getRecommendations({ q: debouncedSearch, limit: 20 })
         setBooks(result.books || [])
       } catch (err) {
         console.error('Failed to load recommendations:', err)
