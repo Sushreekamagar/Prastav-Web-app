@@ -8,8 +8,9 @@ const DELIVERY_STEPS = [
   { key: 'accepted',          label: 'Accepted by Seller',  icon: '✅' },
   { key: 'payment_pending',   label: 'Awaiting Payment',    icon: '💳' },
   { key: 'payment_uploaded',  label: 'Payment Uploaded',    icon: '📤' },
-  { key: 'payment_verified',  label: 'Payment Verified',    icon: '🔒' },
-  { key: 'completed',         label: 'Book Delivered',      icon: '📦' },
+  { key: 'payment_completed', label: 'Payment Verified',    icon: '🔒' },
+  { key: 'dispatched',        label: 'Book Dispatched 📦',  icon: '🚚' },
+  { key: 'completed',         label: 'Delivery Confirmed',  icon: '🎉' },
 ]
 
 const COD_STEPS = [
@@ -24,13 +25,15 @@ const FREE_STEPS = [
   { key: 'completed',  label: 'Completed',         icon: '🎉' },
 ]
 
-const DELIVERY_ORDER = ['pending', 'accepted', 'payment_pending', 'payment_uploaded', 'payment_verified', 'completed']
+const DELIVERY_ORDER = ['pending', 'accepted', 'payment_pending', 'payment_uploaded', 'payment_completed', 'dispatched', 'completed']
 const COD_ORDER      = ['pending', 'accepted', 'completed']
 const FREE_ORDER     = ['pending', 'accepted', 'completed']
 
 function getDeliveryIndex(status) {
   if (status === 'rejected' || status === 'cancelled') return -1
   if (status === 'accepted') return 1
+  // Map payment_completed alias to payment_completed step
+  if (status === 'payment_verified') return DELIVERY_ORDER.indexOf('payment_completed')
   return DELIVERY_ORDER.indexOf(status)
 }
 

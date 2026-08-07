@@ -33,7 +33,8 @@ const transactionSchema = new mongoose.Schema(
         'accepted',           // lister accepted — payment required if price > 0
         'payment_pending',    // waiting for buyer to upload payment proof
         'payment_uploaded',   // buyer uploaded proof, waiting for seller to verify
-        'payment_completed',  // payment verified — ready for physical exchange
+        'payment_completed',  // payment verified — ready for delivery/exchange
+        'dispatched',         // seller dispatched book via Pathao/InDrive
         'completed',          // physical exchange done, both can rate
         'rejected',           // lister rejected request
         'cancelled',          // requester cancelled
@@ -71,6 +72,20 @@ const transactionSchema = new mongoose.Schema(
       default: null,
     },
     paymentVerifiedAt: {
+      type: Date,
+      default: null,
+    },
+
+    // ── Delivery Tracking ─────────────────────────────────────────────
+    deliveryNote: {
+      type: String,
+      default: null,   // e.g. "Sent via Pathao — tracking: ABC123"
+    },
+    dispatchedAt: {
+      type: Date,
+      default: null,
+    },
+    deliveryConfirmedAt: {
       type: Date,
       default: null,
     },

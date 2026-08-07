@@ -31,6 +31,9 @@ function formatTransactionToRequest(tx) {
     ratingBySeller: tx.ratingByLister,
     message: tx.meetingLandmark,
     distanceKm: tx.distanceKm ?? null,
+    deliveryNote: tx.deliveryNote ?? null,
+    dispatchedAt: tx.dispatchedAt ?? null,
+    deliveryConfirmedAt: tx.deliveryConfirmedAt ?? null,
   }
 }
 
@@ -67,6 +70,16 @@ export async function cancelRequest(id) {
 
 export async function completeTransaction(id) {
   const { data } = await api.put(`/transactions/${id}/complete`)
+  return formatTransactionToRequest(data.transaction)
+}
+
+export async function dispatchBook(id, deliveryNote = '') {
+  const { data } = await api.put(`/transactions/${id}/dispatch`, { deliveryNote })
+  return formatTransactionToRequest(data.transaction)
+}
+
+export async function confirmDelivery(id) {
+  const { data } = await api.put(`/transactions/${id}/confirmDelivery`)
   return formatTransactionToRequest(data.transaction)
 }
 

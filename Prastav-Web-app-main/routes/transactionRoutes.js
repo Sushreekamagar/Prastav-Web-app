@@ -3,6 +3,7 @@ const router = express.Router();
 const {
   createTransaction, respondToTransaction,
   getPaymentQR, uploadPaymentProof, verifyPayment,
+  dispatchBook, confirmDelivery,
   completeTransaction, cancelTransaction, rateTransaction,
   getMyTransactions, getSellerTransactions, getTransaction,
 } = require('../controllers/transactionController');
@@ -25,5 +26,7 @@ router.post('/:id/rate',             protect, rateTransaction);
 router.get('/:id/paymentQR',         protect, getPaymentQR);
 router.put('/:id/paymentProof',      protect, uploadProofMiddleware.single('paymentProof'), handleMulterError, uploadPaymentProof);
 router.put('/:id/verifyPayment',     protect, verifyPayment);
+router.put('/:id/dispatch',          protect, dispatchBook);
+router.put('/:id/confirmDelivery',   protect, confirmDelivery);
  
 module.exports = router; 

@@ -32,6 +32,8 @@ import {
   uploadPaymentProof,
   verifyPayment,
   completeTransaction,
+  dispatchBook,
+  confirmDelivery,
   submitRating,
 } from '../../services/requestService'
 import {
@@ -116,6 +118,8 @@ export default function RequestDetailPage({ mode = 'request' }) {
   const [ratingOpen, setRatingOpen] = useState(false)
   const [rating, setRating] = useState(5)
   const [review, setReview] = useState('')
+  const [dispatchNote, setDispatchNote] = useState('')
+  const [dispatchOpen, setDispatchOpen] = useState(false)
 
   const load = async () => {
     setLoading(true)
@@ -232,11 +236,36 @@ export default function RequestDetailPage({ mode = 'request' }) {
     }
   }
 
+  const handleDispatch = async () => {
+    setSubmitting(true)
+    try {
+      await dispatchBook(id, dispatchNote)
+      toast.success('Book dispatched! Buyer has been notified 📦')
+      setDispatchOpen(false)
+      setDispatchNote('')
+      dispatch(); load()
+    } catch (err) {
+      toast.error(err.message || 'Failed to dispatch')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleConfirmDelivery = async () => {
+    try {
+      await confirmDelivery(id)
+      toast.success('Delivery confirmed! Transaction completed 🎉')
+      dispatch(); load()
+    } catch (err) {
+      toast.error(err.message || 'Failed to confirm delivery')
+    }
+  }
+
   // Delivery path helpers
   const isDelivery = ['esewa', 'khalti'].includes(request.paymentMethod)
   const isCOD      = request.paymentMethod === 'cod'
   const isFree     = request.paymentMethod === 'free' || !request.paymentMethod
-  const chatEnabled = ['accepted','payment_pending','payment_uploaded','payment_completed','completed'].includes(request.status)
+  const chatEnabled = ['accepted','payment_pending','payment_uploaded','payment_completed','dispatched','completed'].includes(request.status)
 
   // QR missing check
   const sellerMissingEsewa  = !request.seller?.esewaQr  && !request.seller?.esewaQR
@@ -564,7 +593,14 @@ export default function RequestDetailPage({ mode = 'request' }) {
                 </>
               )}
 
-              {/* Seller: complete after payment verified (Delivery) */}
+              {/* Seller: dispatch after payment verified (Delivery) */}
+              {isSellerView && isDelivery && request.status === 'payment_completed' && (
+                <Button className="w-full bg-blue-600 hover:bg-blue-700" onClick={() => setDispatchOpen(true)}>
+                  🚚 Send via Pathao / InDrive
+                </Button>
+              )}
+
+              {/* Seller: complete after payment verified (old fallback) */}
               {isSellerView && request.status === 'payment_verified' && (
                 <Button className="w-full" onClick={handleComplete}>Mark as Delivered</Button>
               )}
@@ -573,6 +609,13 @@ export default function RequestDetailPage({ mode = 'request' }) {
               {(isCOD || isFree) && request.status === 'accepted' && (
                 <Button className="w-full" onClick={handleComplete}>
                   <HiOutlineCheck className="h-4 w-4" /> Mark as Completed (Exchange Done)
+                </Button>
+              )}
+
+              {/* Buyer: dispatched → confirm received */}
+              {isBuyerView && isDelivery && request.status === 'dispatched' && (
+                <Button className="w-full bg-green-600 hover:bg-green-700" onClick={handleConfirmDelivery}>
+                  ✅ I Received the Book!
                 </Button>
               )}
 

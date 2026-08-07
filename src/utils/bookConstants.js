@@ -54,6 +54,8 @@ export const REQUEST_STATUS = {
   payment_pending: { label: 'Payment Pending', variant: 'warning' },
   payment_uploaded: { label: 'Payment Uploaded', variant: 'info' },
   payment_verified: { label: 'Payment Verified', variant: 'success' },
+  payment_completed: { label: 'Payment Verified', variant: 'success' },
+  dispatched: { label: 'Dispatched 📦', variant: 'info' },
   completed: { label: 'Completed', variant: 'success' },
   cancelled: { label: 'Cancelled', variant: 'default' },
 }
@@ -63,6 +65,8 @@ export const TRANSACTION_STATUSES = [
   'payment_pending',
   'payment_uploaded',
   'payment_verified',
+  'payment_completed',
+  'dispatched',
   'completed',
 ]
 

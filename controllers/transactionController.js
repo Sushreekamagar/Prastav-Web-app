@@ -431,11 +431,20 @@ const completeTransaction = async (req, res) => {
  
     if (!isParty) return res.status(403).json({ success: false, message: 'Not authorized.' });
  
-    if (!['accepted', 'payment_completed'].includes(transaction.status)) {
+    if (!['accepted', 'payment_completed', 'dispatched'].includes(transaction.status)) {
       return res.status(400).json({
         success: false,
-        message: 'Transaction must be accepted or payment completed before marking as done.',
+        message: 'Transaction must be accepted, payment completed, or dispatched before marking as done.',
       });
+    }
+ 
+    // For Delivery flow: only buyer can confirm receipt from dispatched status
+    const isDelivery = ['esewa', 'khalti'].includes(transaction.paymentMethod);
+    if (isDelivery && transaction.status === 'dispatched') {
+      const reqId2 = transaction.requester._id || transaction.requester;
+      if (reqId2.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ success: false, message: 'Only the buyer can confirm delivery receipt.' });
+      }
     }
  
     if (transaction.paymentMethod === 'cod') {
@@ -487,6 +496,127 @@ const completeTransaction = async (req, res) => {
     res.status(200).json({
       success: true,
       message: 'Exchange completed! You can now rate each other.',
+      transaction,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+ 
+// ────────────────────────────────────────────────────────────────────────────
+// PUT /api/transactions/:id/dispatch — Seller dispatches book (Home Delivery)
+// ────────────────────────────────────────────────────────────────────────────
+const dispatchBook = async (req, res) => {
+  try {
+    const { deliveryNote } = req.body; // e.g. "Sent via Pathao — tracking: XYZ123"
+
+    const transaction = await Transaction.findById(req.params.id)
+      .populate('book', 'title')
+      .populate('requester', 'name email')
+      .populate('lister', 'name email');
+    if (!transaction) return res.status(404).json({ success: false, message: 'Transaction not found.' });
+
+    const listerId = transaction.lister._id || transaction.lister;
+    if (listerId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: 'Only the seller can dispatch the book.' });
+    }
+
+    if (transaction.status !== 'payment_completed') {
+      return res.status(400).json({ success: false, message: 'Payment must be verified before dispatching.' });
+    }
+
+    transaction.status = 'dispatched';
+    transaction.dispatchedAt = new Date();
+    transaction.deliveryNote = deliveryNote || null;
+    await transaction.save();
+
+    // Email buyer
+    await sendNotificationEmail(
+      transaction.requester.email,
+      '📦 Your Book Has Been Dispatched!',
+      `<p>Great news! <strong>${transaction.lister.name}</strong> has dispatched your book <em>${transaction.book?.title}</em>.</p>
+       ${deliveryNote ? `<p>Delivery Note: <strong>${deliveryNote}</strong></p>` : ''}
+       <p>Once you receive it, please confirm delivery on Prastav.</p>`
+    );
+
+    // In-app notification to buyer
+    await Notification.create({
+      recipient: transaction.requester._id,
+      sender: transaction.lister._id,
+      title: '📦 Book Dispatched!',
+      message: `${transaction.lister.name} has dispatched "${transaction.book?.title || 'your book'}" via delivery service. ${deliveryNote ? 'Note: ' + deliveryNote : ''}`,
+      type: 'system',
+      relatedBook: transaction.book?._id,
+      relatedTransaction: transaction._id,
+    });
+
+    res.status(200).json({ success: true, message: 'Book dispatched successfully! Buyer has been notified.', transaction });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+ 
+// ────────────────────────────────────────────────────────────────────────────
+// PUT /api/transactions/:id/confirmDelivery — Buyer confirms book received
+// ────────────────────────────────────────────────────────────────────────────
+const confirmDelivery = async (req, res) => {
+  try {
+    const transaction = await Transaction.findById(req.params.id)
+      .populate('book', 'title')
+      .populate('requester', 'name email')
+      .populate('lister', 'name email');
+    if (!transaction) return res.status(404).json({ success: false, message: 'Transaction not found.' });
+
+    const reqId = transaction.requester._id || transaction.requester;
+    if (reqId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: 'Only the buyer can confirm delivery.' });
+    }
+
+    if (transaction.status !== 'dispatched') {
+      return res.status(400).json({ success: false, message: 'Book must be dispatched before confirming delivery.' });
+    }
+
+    transaction.status = 'completed';
+    transaction.completedAt = new Date();
+    transaction.deliveryConfirmedAt = new Date();
+    await transaction.save();
+
+    // Archive the book
+    await Book.findByIdAndUpdate(transaction.book._id || transaction.book, { isAvailable: false, isDeleted: true });
+
+    // Email seller
+    await sendNotificationEmail(
+      transaction.lister.email,
+      '✅ Delivery Confirmed by Buyer',
+      `<p><strong>${transaction.requester.name}</strong> has confirmed receipt of <em>${transaction.book?.title}</em>.</p>
+       <p>The transaction is now complete. You can rate each other on Prastav!</p>`
+    );
+
+    // Notify both parties
+    await Notification.create([
+      {
+        recipient: transaction.lister._id,
+        sender: transaction.requester._id,
+        title: '✅ Delivery Confirmed',
+        message: `${transaction.requester.name} confirmed receiving "${transaction.book?.title || 'your book'}". Transaction completed! You can now rate each other.`,
+        type: 'transaction_completed',
+        relatedBook: transaction.book?._id,
+        relatedTransaction: transaction._id,
+      },
+      {
+        recipient: transaction.requester._id,
+        sender: transaction.lister._id,
+        title: '🎉 Transaction Completed',
+        message: `Your delivery of "${transaction.book?.title || 'the book'}" is complete. Please rate the seller!`,
+        type: 'transaction_completed',
+        relatedBook: transaction.book?._id,
+        relatedTransaction: transaction._id,
+      },
+    ]);
+
+    res.status(200).json({
+      success: true,
+      message: 'Delivery confirmed! Transaction completed. You can now rate each other.',
       transaction,
     });
   } catch (error) {
@@ -706,6 +836,8 @@ module.exports = {
   getPaymentQR,
   uploadPaymentProof,
   verifyPayment,
+  dispatchBook,
+  confirmDelivery,
   completeTransaction,
   cancelTransaction,
   rateTransaction,

@@ -74,6 +74,20 @@ const transactionSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+
+    // ── Delivery Tracking ─────────────────────────────────────────────
+    deliveryNote: {
+      type: String,
+      default: null,   // e.g. "Sent via Pathao — tracking: ABC123"
+    },
+    dispatchedAt: {
+      type: Date,
+      default: null,
+    },
+    deliveryConfirmedAt: {
+      type: Date,
+      default: null,
+    },
  
     // ── Ratings (after completion) ────────────────────────────────────
     ratingByRequester: {

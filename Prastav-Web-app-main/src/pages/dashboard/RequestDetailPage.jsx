@@ -32,6 +32,8 @@ import {
   uploadPaymentProof,
   verifyPayment,
   completeTransaction,
+  dispatchBook,
+  confirmDelivery,
   submitRating,
 } from '../../services/requestService'
 import {
@@ -116,6 +118,8 @@ export default function RequestDetailPage({ mode = 'request' }) {
   const [ratingOpen, setRatingOpen] = useState(false)
   const [rating, setRating] = useState(5)
   const [review, setReview] = useState('')
+  const [dispatchNote, setDispatchNote] = useState('')
+  const [dispatchOpen, setDispatchOpen] = useState(false)
 
   const load = async () => {
     setLoading(true)
@@ -232,11 +236,36 @@ export default function RequestDetailPage({ mode = 'request' }) {
     }
   }
 
+  const handleDispatch = async () => {
+    setSubmitting(true)
+    try {
+      await dispatchBook(id, dispatchNote)
+      toast.success('Book dispatched! Buyer has been notified 📦')
+      setDispatchOpen(false)
+      setDispatchNote('')
+      dispatch(); load()
+    } catch (err) {
+      toast.error(err.message || 'Failed to dispatch')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleConfirmDelivery = async () => {
+    try {
+      await confirmDelivery(id)
+      toast.success('Delivery confirmed! Transaction completed 🎉')
+      dispatch(); load()
+    } catch (err) {
+      toast.error(err.message || 'Failed to confirm delivery')
+    }
+  }
+
   // Delivery path helpers
   const isDelivery = ['esewa', 'khalti'].includes(request.paymentMethod)
   const isCOD      = request.paymentMethod === 'cod'
   const isFree     = request.paymentMethod === 'free' || !request.paymentMethod
-  const chatEnabled = ['accepted','payment_pending','payment_uploaded','payment_completed','completed'].includes(request.status)
+  const chatEnabled = ['accepted','payment_pending','payment_uploaded','payment_completed','dispatched','completed'].includes(request.status)
 
   // QR missing check
   const sellerMissingEsewa  = !request.seller?.esewaQr  && !request.seller?.esewaQR
@@ -494,6 +523,32 @@ export default function RequestDetailPage({ mode = 'request' }) {
             )}
 
             <TransactionTimeline request={request} />
+
+            {/* ── Dispatched Info (shown to both when book is in transit) ── */}
+            {request.status === 'dispatched' && (
+              <div className="rounded-2xl bg-blue-50 border border-blue-200 p-6 shadow-md">
+                <div className="flex items-center gap-2 mb-3">
+                  <HiOutlineTruck className="h-5 w-5 text-blue-600" />
+                  <h3 className="font-semibold text-blue-800">Book is on its way! 📦</h3>
+                </div>
+                {request.deliveryNote && (
+                  <div className="rounded-xl bg-blue-100 p-3 mb-3">
+                    <p className="text-xs text-blue-500 font-medium mb-1">Delivery Note from Seller</p>
+                    <p className="text-sm font-semibold text-blue-900">{request.deliveryNote}</p>
+                  </div>
+                )}
+                {isBuyerView && (
+                  <p className="text-sm text-blue-700">
+                    Once you receive the book, tap <strong>"✅ I Received the Book!"</strong> button in Actions to complete the transaction.
+                  </p>
+                )}
+                {isSellerView && (
+                  <p className="text-sm text-blue-700">
+                    Waiting for the buyer to confirm receipt. The transaction will be marked complete after buyer confirms.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="space-y-4">
@@ -564,7 +619,14 @@ export default function RequestDetailPage({ mode = 'request' }) {
                 </>
               )}
 
-              {/* Seller: complete after payment verified (Delivery) */}
+              {/* Seller: dispatch after payment verified (Delivery) */}
+              {isSellerView && isDelivery && request.status === 'payment_completed' && (
+                <Button className="w-full bg-blue-600 hover:bg-blue-700" onClick={() => setDispatchOpen(true)}>
+                  🚚 Send via Pathao / InDrive
+                </Button>
+              )}
+
+              {/* Seller: complete after payment verified (old fallback) */}
               {isSellerView && request.status === 'payment_verified' && (
                 <Button className="w-full" onClick={handleComplete}>Mark as Delivered</Button>
               )}
@@ -573,6 +635,13 @@ export default function RequestDetailPage({ mode = 'request' }) {
               {(isCOD || isFree) && request.status === 'accepted' && (
                 <Button className="w-full" onClick={handleComplete}>
                   <HiOutlineCheck className="h-4 w-4" /> Mark as Completed (Exchange Done)
+                </Button>
+              )}
+
+              {/* Buyer: dispatched → confirm received */}
+              {isBuyerView && isDelivery && request.status === 'dispatched' && (
+                <Button className="w-full bg-green-600 hover:bg-green-700" onClick={handleConfirmDelivery}>
+                  ✅ I Received the Book!
                 </Button>
               )}
 
@@ -659,6 +728,40 @@ export default function RequestDetailPage({ mode = 'request' }) {
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      </Modal>
+
+      {/* ── Dispatch Modal ── */}
+      <Modal
+        isOpen={dispatchOpen}
+        onClose={() => setDispatchOpen(false)}
+        title="🚚 Dispatch Book"
+        footer={
+          <>
+            <Button variant="outline" size="sm" onClick={() => setDispatchOpen(false)}>Cancel</Button>
+            <Button size="sm" onClick={handleDispatch} disabled={submitting}>
+              {submitting ? 'Dispatching...' : '📦 Confirm Dispatch'}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div className="rounded-xl bg-blue-50 border border-blue-200 p-4">
+            <p className="text-sm font-semibold text-blue-800">Confirm you have sent the book via Pathao, InDrive, or another delivery service.</p>
+            <p className="mt-1 text-xs text-blue-600">The buyer will be notified immediately by email and in-app notification.</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Delivery Note <span className="text-gray-400 font-normal">(optional)</span>
+            </label>
+            <input
+              type="text"
+              className="w-full rounded-xl border border-gray-200 p-3 text-sm focus:ring-2 focus:ring-prastav-400 focus:outline-none"
+              placeholder="e.g. Sent via Pathao — tracking: XYZ123"
+              value={dispatchNote}
+              onChange={(e) => setDispatchNote(e.target.value)}
+            />
           </div>
         </div>
       </Modal>
