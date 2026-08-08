@@ -24,6 +24,7 @@ import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import TransactionTimeline from '../../components/transactions/TransactionTimeline'
 import { LoadingScreen } from '../../components/ui/Spinner'
 import PageTransition from '../../components/ui/PageTransition'
+import { useAuth } from '../../context/AuthContext'
 import { useDashboardMode } from '../../hooks/useDashboardMode'
 import {
   getRequestById,
@@ -141,9 +142,15 @@ export default function RequestDetailPage({ mode = 'request' }) {
   if (loading) return <LoadingScreen message="Loading details..." />
   if (!request) return null
 
+  const { user } = useAuth()
   const statusInfo = REQUEST_STATUS[request.status] || REQUEST_STATUS.pending
-  const isBuyerView = !isSeller
-  const isSellerView = isSeller
+  const sellerId = request.seller?._id || request.seller
+  const buyerId = request.buyer?._id || request.buyer
+  const currentUserId = user?._id || user?.id
+
+  const isSellerView = currentUserId ? String(currentUserId) === String(sellerId) : isSeller
+  const isBuyerView = currentUserId ? String(currentUserId) === String(buyerId) : !isSeller
+  const isPaymentVerified = ['payment_completed', 'payment_verified'].includes(request.status)
 
   const dispatch = () => window.dispatchEvent(new Event('refresh-data'))
 
@@ -522,6 +529,54 @@ export default function RequestDetailPage({ mode = 'request' }) {
               </div>
             )}
 
+            {/* ── Dispatched / In Transit Info Section ── */}
+            {isDelivery && request.status === 'dispatched' && (
+              <div className="rounded-2xl bg-white p-6 shadow-md border-2 border-blue-100 space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+                    <HiOutlineTruck className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-gray-900 text-base">Book Dispatched via Pathao / InDrive 📦</h3>
+                    <p className="text-xs text-gray-500">
+                      {request.dispatchedAt ? `Dispatched on ${formatDate(request.dispatchedAt)}` : 'In transit to buyer'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="rounded-xl bg-amber-50 border border-amber-200 p-4">
+                  <div className="flex items-start gap-2.5">
+                    <HiOutlineExclamation className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                    <div className="text-xs text-amber-800 space-y-1">
+                      <p className="font-bold text-sm text-amber-900">Pathao / InDrive Delivery Charge Notice:</p>
+                      <p>
+                        • <strong>Buyer must pay the Pathao / InDrive delivery charge</strong> directly to the delivery rider upon parcel arrival.
+                      </p>
+                      <p>
+                        • The book price (<strong>{formatPrice(request.book?.price)}</strong>) payment has already been verified and paid to seller.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {request.deliveryNote && (
+                  <div className="rounded-xl bg-gray-50 border border-gray-200 p-3.5 text-xs text-gray-700">
+                    <span className="font-semibold text-gray-900 block mb-1">🚚 Delivery Details / Rider Info:</span>
+                    <p className="whitespace-pre-wrap text-gray-800 font-mono bg-white p-2.5 rounded-lg border border-gray-200">{request.deliveryNote}</p>
+                  </div>
+                )}
+
+                {isBuyerView && (
+                  <div className="pt-2 border-t border-gray-100">
+                    <p className="text-xs text-gray-600 mb-2">Once the rider delivers your book, click below to confirm receipt:</p>
+                    <Button className="w-full bg-green-600 hover:bg-green-700" onClick={handleConfirmDelivery}>
+                      ✅ I Received the Book!
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+
             <TransactionTimeline request={request} />
           </div>
 
@@ -594,7 +649,7 @@ export default function RequestDetailPage({ mode = 'request' }) {
               )}
 
               {/* Seller: dispatch after payment verified (Delivery) */}
-              {isSellerView && isDelivery && request.status === 'payment_completed' && (
+              {isSellerView && isDelivery && isPaymentVerified && (
                 <Button className="w-full bg-blue-600 hover:bg-blue-700" onClick={() => setDispatchOpen(true)}>
                   🚚 Send via Pathao / InDrive
                 </Button>
@@ -735,6 +790,62 @@ export default function RequestDetailPage({ mode = 'request' }) {
         confirmLabel="Cancel Request"
         loading={submitting}
       />
+
+      {/* Dispatch Modal for Seller */}
+      <Modal
+        isOpen={dispatchOpen}
+        onClose={() => setDispatchOpen(false)}
+        title="Send via Pathao / InDrive Courier"
+        footer={
+          <>
+            <Button variant="outline" size="sm" onClick={() => setDispatchOpen(false)}>
+              Cancel
+            </Button>
+            <Button size="sm" onClick={handleDispatch} disabled={submitting}>
+              {submitting ? 'Dispatching...' : '🚚 Mark as Dispatched'}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div className="rounded-xl bg-blue-50 border border-blue-200 p-4">
+            <div className="flex items-start gap-2.5">
+              <HiOutlineTruck className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <h4 className="font-semibold text-blue-900 text-sm">Pathao / InDrive Parcel Delivery</h4>
+                <p className="mt-1 text-xs text-blue-700">
+                  Book: <strong>{request.book?.title}</strong> for buyer <strong>{request.buyer?.name}</strong>.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-xl bg-amber-50 border border-amber-200 p-4 text-xs text-amber-900 space-y-1.5">
+            <p className="font-bold text-sm text-amber-950 flex items-center gap-1">
+              ⚠️ Important Delivery Charge Notice:
+            </p>
+            <p>
+              • <strong>The buyer must pay the Pathao / InDrive delivery charge</strong> directly to the rider when the book is delivered.
+            </p>
+            <p>
+              • The book price (<strong>{formatPrice(request.book?.price)}</strong>) payment has already been verified and received by you.
+            </p>
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-gray-700">
+              Tracking ID / Rider Contact / Delivery Note (Optional)
+            </label>
+            <textarea
+              className="w-full rounded-xl border border-gray-200 p-3 text-sm focus:border-prastav-500 focus:outline-none focus:ring-1 focus:ring-prastav-500"
+              rows={3}
+              placeholder="e.g., Sent via Pathao Parcel (Tracking ID: #PTH-98412). Rider contact: 9812345678"
+              value={dispatchNote}
+              onChange={(e) => setDispatchNote(e.target.value)}
+            />
+          </div>
+        </div>
+      </Modal>
     </DashboardPage>
   )
 }
