@@ -34,6 +34,7 @@ const transactionSchema = new mongoose.Schema(
         'payment_pending',    // waiting for buyer to upload payment proof
         'payment_uploaded',   // buyer uploaded proof, waiting for seller to verify
         'payment_completed',  // payment verified — ready for physical exchange
+        'dispatched',         // book dispatched via courier (Pathao / InDrive)
         'completed',          // physical exchange done, both can rate
         'rejected',           // lister rejected request
         'cancelled',          // requester cancelled

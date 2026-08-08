@@ -33,8 +33,8 @@ const transactionSchema = new mongoose.Schema(
         'accepted',           // lister accepted — payment required if price > 0
         'payment_pending',    // waiting for buyer to upload payment proof
         'payment_uploaded',   // buyer uploaded proof, waiting for seller to verify
-        'payment_completed',  // payment verified — ready for delivery/exchange
-        'dispatched',         // seller dispatched book via Pathao/InDrive
+        'payment_completed',  // payment verified — ready for physical exchange
+        'dispatched',         // book dispatched via courier (Pathao / InDrive)
         'completed',          // physical exchange done, both can rate
         'rejected',           // lister rejected request
         'cancelled',          // requester cancelled
